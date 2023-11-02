@@ -2,6 +2,9 @@ import numpy as np
 # from ..cryogens.cryogen import Cryogen
 from cryogens import Cryogen
 
+# Numerical integration of ODE systems
+from scipy.integrate import solve_ivp
+
 class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
@@ -21,6 +24,9 @@ class Tank:
         self.LF = LF
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
         # switch for the non-eq model
+
+        # Solution object
+        self.sol = None
         pass
 
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0):
@@ -35,6 +41,54 @@ class Tank:
         self.Q_roof = Q_roof  # [W] Heat ingress through the roof
         self.T_air = T_air  # [K] Temperature of the surrounding air /K
         pass
+
+    def evaporate(self, t_f):
+        ''' Simulates the isobaric evaporation of the stored cryogen for the time t_f
+        '''
+        
+        # Integrates the ODE system for the isobaric evaporation
+        # of the cryogenic liquid
+        t_eval = np.linspace(0, t_f, 1000)
+
+        sol = solve_ivp(self.sys_isobaric, (0, t_f), [self.V * self.LF], t_eval = t_eval)
+        self.sol = sol
+    
+    def sys_isobaric(self, t, y):
+        '''
+        ODE for the liquid volume. 
+        '''
+        # The liquid volume is the dependent variable    
+        V_L = y[0]
+
+        # Updates liquid filling
+        self.LF = V_L / self.V
+
+        # Computes total heat ingress to the liquid
+        Q_L_tot = self.Q_L_in + self.Q_b
+
+        # Calculates latent heat of vaporisation
+        dH_LV = self.cryogen.h_V - self.cryogen.h_L
+
+        # Returns RHS of ODE that governs the liquid volume
+        return -1 / self.cryogen.rho_L * (Q_L_tot/dH_LV)
+
+    def evap_rate(self):
+        '''
+        Calculates evaporation rate
+        '''
+        if self.sol is None:
+            print("No solution available, perform tank.evaporate() to construct solution")
+            return
+        else:
+            # Calculates latent heat of vaporisation
+            dH_LV = self.cryogen.h_V - self.cryogen.h_L
+
+            # Extracts liquid volume
+            V_L = self.sol.y[0]
+
+            Q_L_in = 4 * V_L * self.d_o/(self.d_i**2) * self.U_L * (self.T_air - self.cryogen.T_sat)
+            return 1 /dH_LV * (self.Q_b + Q_L_in) 
+
 
     @property
     def l_V(self):
@@ -55,7 +109,7 @@ class Tank:
     @property
     def v_z(self):
         """Update advective velocity with respect to tank liquid filling"""
-        # Initial evaporation rate mol/s
+        # Initial evaporation rate kg/s
         BL_0 = (self.Q_L_in + self.Q_b) / ((self.cryogen.h_V - self.cryogen.h_L))
         v_z = 4 * BL_0 / (self.cryogen.rho_V * np.pi * self.d_i ** 2)
         return v_z
