@@ -24,14 +24,14 @@ class Cryogen:
         self.name = name
         self.P = P  # Pressure / Pa
         self.T_sat = T_sat  # Saturation temperature / K
-        self.rho_L = rho_L  # Liquid Density / mol*m^-3
-        self.rho_V = rho_V  # Vapour density / mol*m^-3
+        self.rho_L = rho_L  # Liquid Density / kg*m^-3
+        self.rho_V = rho_V  # Vapour density / kg*m^-3
         self.rho_V_sat = rho_V  # Initialize vapour density at the interface
-        self.h_L = h_L  # Liquid enthalpy J/mol
-        self.h_V = h_V  # Vapour enthalpy J/mol
+        self.h_L = h_L  # Liquid enthalpy J/kg
+        self.h_V = h_V  # Vapour enthalpy J/kg
         self.k_V = k_V  # Thermal conductivity of the vapour W/mK
         self.k_int = k_V  # Thermal conductivity at the vapour-liquid interface
-        self.cp_V = cp_V  # Heat capacity at constant pressure / J/molK
+        self.cp_V = cp_V  # Heat capacity at constant pressure / J/kg/K
         self.MW = MW
 
     def rho_ig(self, T=None, P=None):
@@ -58,11 +58,11 @@ class Cryogen:
         self.rho_V = CP.PropsSI('D','P',p,'Q',1,fluid) # Vapour mass density
         self.rho_V_sat = self.rho_V
 
-        self.h_L = CP.PropsSI('H','P',p,'Q',0,fluid)  # Liquid enthalpy J/mol
-        self.h_V = CP.PropsSI('H','P',p,'Q',1,fluid)  # Vapour enthalpy J/mol
+        self.h_L = CP.PropsSI('H','P',p,'Q',0,fluid)  # Liquid enthalpy J/kg
+        self.h_V = CP.PropsSI('H','P',p,'Q',1,fluid)  # Vapour enthalpy J/kg
         self.k_V = CP.PropsSI('L','P',p,'Q',1,fluid)  # Thermal conductivity of the vapour W/mK
         self.k_int = self.k_V  # Thermal conductivity at the vapour-liquid interface
-        self.cp_V = CP.PropsSI('C','P',p,'Q',1,fluid)  # Heat capacity at constant pressure / J/molK
+        self.cp_V = CP.PropsSI('C','P',p,'Q',1,fluid)  # Heat capacity at constant pressure / J/kg/K
         self.MW = MW = CP.PropsSI(fluid,'molemass')
 
 
