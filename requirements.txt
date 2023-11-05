@@ -1,0 +1,4 @@
+scipy>=1.9.1
+matplotlib>=3.5.2
+CoolProp>=6.4.3
+numpy>=1.21.5
