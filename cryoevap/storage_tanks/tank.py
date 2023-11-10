@@ -11,6 +11,9 @@ from scipy.integrate import solve_ivp
 # Simpson's rule for integration with 2nd order accuracy
 from scipy.integrate import simps
 
+# Plotting routines
+from . import plots
+
 class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
@@ -40,6 +43,8 @@ class Tank:
         # Time interval in second to plot vapour temperature profile
         self.time_interval = 3600
 
+        # Store integrated quantities as dictionaries
+        self.data = {'Q_VL': [], 'BOG': []}
         pass
 
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0):
@@ -87,8 +92,15 @@ class Tank:
         # Concatenate initial conditions in a single vector
         IC = np.append(VL_0, Tv_0)
 
+        # Integrate
         sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-6, rtol=1e-6)
+
+        # Set tank solution object with the volume and vapour temperature profiles
+        # as a function of time
         self.sol = sol
+
+        # Reconstruct integrated quantities
+        self._rec_int_q()
     
     def sys_liq_volume(self, t, y):
         '''
@@ -196,7 +208,7 @@ class Tank:
 
     def evap_rate(self):
         '''
-        Calculates evaporation rate
+        Calculates evaporation rate after completing an evaporation
         '''
         if self.sol is None:
             print("No solution available, perform tank.evaporate() to construct solution")
@@ -209,7 +221,78 @@ class Tank:
             V_L = self.sol.y[0]
 
             Q_L_in = 4 * V_L * self.d_o/(self.d_i**2) * self.U_L * (self.T_air - self.cryogen.T_sat)
-            return 1 /dH_LV * (self.Q_b + Q_L_in) 
+            return 1 /dH_LV * (self.Q_b + Q_L_in + self.data['Q_VL']) 
+        
+    def Q_VL(self, T_V):
+        '''
+        Calculate vapour to liquid heat transfer rate
+        using the Fourier's law
+        '''
+
+        # Temperature gradient at the interface
+        dz = (self.z_grid[1] - self.z_grid[0])*self.l_V
+        dTdz_i = (-3 * T_V[0] + 4 * T_V[1] - T_V[2])/(2*dz)
+        
+        return self.cryogen.k_V_avg * self.A_T * dTdz_i
+    
+    # Plotting routines
+    def plot_tv(self):
+        '''
+        Plots vapour temperature profile after running a solution
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_tv() again')  
+
+        # Produce vapour temperature plot
+        plots.plot_tv(self)
+        return
+    
+    def plot_V_L(self):
+        '''
+        Plots liquid volume as a function of time
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_V_L() again')  
+
+        # Produce liquid volume plot
+        plots.plot_V_L(self)
+    
+    def _rec_int_q(self):
+        '''
+        Reconstructs integrated quantities such as the vapour
+        to liquid heat transfer rate (Q_VL), the liquid heat ingress
+        (Q_Lin) and the vapour heat ingress (Q_V)
+        '''  
+        Q_VL = []
+
+        for i in range(0, len(self.sol.t)):
+            # Get the temperature at this time step
+            T_v = self.sol.y[1:, i]
+            # Append vapour to liquid heat ingress at the
+            # each saved time step
+            Q_VL.append(self.Q_VL(T_v))
+        
+        # Store Q_VL in the tank object
+        self.data['Q_VL'] = np.array(Q_VL)
+
+        # Reconstruct liquid and vapour heat ingresses
+        l_L = self.sol.y[0] / self.A_T
+        delta_T = (self.T_air - self.cryogen.T_sat)
+        Q_L = self.U_L * (np.pi * self.d_o * l_L) * delta_T
+        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) * delta_T 
+        
+        # Store reconstructed heat ingresses in the tank object
+        self.data['Q_L'] = np.array(Q_L)
+        self.data['Q_V'] = np.array(Q_V)
+        return
+
+    # Properties
     
     @property
     def l_V(self):
@@ -227,19 +310,6 @@ class Tank:
         in W """
         return self.U_L * self.A_L * (self.T_air - self.cryogen.T_sat)
     
-    def Q_VL(self, T_V):
-        '''
-        Calculate vapour to liquid heat transfer rate
-        using the Fourier's law
-        '''
-
-        # Temperature gradient at the interface
-        dz = (self.z_grid[1] - self.z_grid[0])*self.l_V
-        dTdz_i = (-3 * T_V[0] + 4 * T_V[1] - T_V[2])/(2*dz)
-        
-        return self.cryogen.k_V_avg * self.A_T * dTdz_i
-
-
     @property
     def v_z(self):
         """Update advective velocity with respect to tank liquid filling"""
