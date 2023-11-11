@@ -11,6 +11,9 @@ from scipy.integrate import solve_ivp
 # Simpson's rule for integration with 2nd order accuracy
 from scipy.integrate import simps
 
+# Linear interpolant to reconstruct solutions
+from scipy.interpolate import interp1d
+
 # Plotting routines
 from . import plots
 
@@ -100,7 +103,7 @@ class Tank:
         self.sol = sol
 
         # Reconstruct integrated quantities
-        self._rec_int_q()
+        self._reconstruct()
     
     def sys_liq_volume(self, t, y):
         '''
@@ -263,22 +266,38 @@ class Tank:
         # Produce liquid volume plot
         plots.plot_V_L(self)
     
-    def _rec_int_q(self):
+    def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
         to liquid heat transfer rate (Q_VL), the liquid heat ingress
         (Q_Lin) and the vapour heat ingress (Q_V)
         '''  
         Q_VL = []
+        Tv_avg = []
+        rho_V_avg = []
 
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
             T_v = self.sol.y[1:, i]
-            # Append vapour to liquid heat ingress at the
-            # each saved time step
+
+            # Calculate and append Q_VL
             Q_VL.append(self.Q_VL(T_v))
+
+            # Average vapour temperature
+            Tv_avg.append(simps(T_v, self.z_grid))
+
+            # Average vapour density
+            self.cryogen.update_rho_V(self.z_grid, T_v)
+            rho_V_avg.append(self.cryogen.rho_V_avg)
         
-        # Store Q_VL in the tank object
+        # Extrapolate average vapour density for t = 0
+        rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
+        rho_V_avg = np.array(rho_V_avg)
+
+        # Vectorise
+        self.data['V_L'] = self.sol.y[0]
+        self.data['Tv_avg'] = np.array(Tv_avg)
+        self.data['rho_V_avg'] = rho_V_avg
         self.data['Q_VL'] = np.array(Q_VL)
 
         # Reconstruct liquid and vapour heat ingresses
@@ -290,7 +309,62 @@ class Tank:
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
         self.data['Q_V'] = np.array(Q_V)
+
+        # Evaporation rate in kg/s
+        self.data['B_L'] = self.evap_rate()
+        
+        # Average vapour density time derivative
+        self.data['drho_V_avg'] = self.dydt(self.sol.t, rho_V_avg)
+
+        # Liquid volume time derivative
+        self.data['dV_L'] = self.dydt(self.sol.t, self.sol.y[0])
+
+        # BOG rate calculation
+        self.data['BOG'] = (self.data['B_L']
+            + self.data['rho_V_avg'] * self.data['dV_L']
+            - (self.V - self.data['V_L']) * self.data['drho_V_avg'])
         return
+    
+    def dydt(self, t, y):
+        '''
+        Calculate state variable derivative finite
+        difference approximation dydt. from
+        the numerical solution y evaluated in the
+        discretized time domain t 
+        
+        Inputs:
+            y: Dependent variable 
+            t: Discretized time domain
+        
+        Returns:
+            dy: State variable derivative
+        '''
+        dy = np.zeros(len(t))
+        # dydt|t=0 = 0
+        # Assume equally spaced dt
+        dt = t[1] - t[0]
+        # Second order central differences
+        dy[1:-1] = (y[2:] - y[0:-2])/(2*dt)
+        # Second order backward differences
+        dy[-1] = (3*y[-1] - 4*y[-2] + y[-3])/(2*dt)
+        return dy
+
+    
+    def interpolate(self, t, y, t_int = 0):
+        '''
+        Interpolate/extrapolate dependent variable 
+        in the index 0 for purposes of
+        reconstructing solutions
+
+        Inputs:
+            t_int: interpolation time / s
+        '''
+        # Create a linear interpolant
+        linear_interp = interp1d(t[1:], y[1:],
+                                  kind='linear', fill_value='extrapolate')
+        return linear_interp(t_int)
+
+
 
     # Properties
     
