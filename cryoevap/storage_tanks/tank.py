@@ -47,7 +47,10 @@ class Tank:
         self.time_interval = 3600
 
         # Store integrated quantities as dictionaries
-        self.data = {'Q_VL': [], 'BOG': []}
+        self.data = {'Time':[], 'Tv_avg': [], 'rho_V_avg': [],
+                    'Q_VL': [],'Q_L': [], 'Q_V': [],
+                    'V_L': [], 'B_L': [], 'BOG': [],
+                    'drho_V_avg': [], 'dV_L': []}
         pass
 
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0):
@@ -266,6 +269,44 @@ class Tank:
         # Produce liquid volume plot
         plots.plot_V_L(self)
     
+    def plot_BOG(self, unit='kg/h'):
+        '''
+        Plots liquid volume as a function of time
+
+        Inputs:
+            unit: 'kg/h', 'kg/s', 'g/s'
+        Returns:
+            None
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_BOG() again')  
+
+        # Produce liquid volume plot
+        plots.plot_BOG(self, unit)
+    
+    def plot_Q(self, unit='kW'):
+        '''
+        Plots vapour to liquid heat transfer rate
+
+        Inputs:
+            tank: Tank object with a sol object 
+            unit: [Q_V, Q_L, Q_VL], units. kW or W
+        
+        Returns:
+            None:
+        '''
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_QVL() again') 
+        
+        # Produce liquid volume plot
+        plots.plot_Q(self, unit)
+
+    
     def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
@@ -275,6 +316,9 @@ class Tank:
         Q_VL = []
         Tv_avg = []
         rho_V_avg = []
+
+        # Extract time-steps in seconds
+        self.data['Time'] = self.sol.t
 
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
