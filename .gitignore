@@ -93,4 +93,4 @@ ENV/
 .ropeproject
 
 # Output data files
-.csv
+*.csv
