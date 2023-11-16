@@ -81,6 +81,7 @@ class Cryogen:
         self.k_V_avg = self.k_V # Initialise average thermal conductivity
         
         self.cp_V = CP.PropsSI('C','P',p,'Q',1,fluid)  # Heat capacity at constant pressure / J/kg/K
+        self.cp_L = CP.PropsSI('C','P',p,'Q',0,fluid)  # Heat capacity at constant pressure / J/kg/K
         self.cp_V_avg = self.cp_V # Initialise cp_avg
         self.MW = MW = CP.PropsSI(fluid,'molemass')
     
