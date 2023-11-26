@@ -21,20 +21,25 @@ class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
 
-    def __init__(self, d_i, d_o, V, LF=0.97):
+    def __init__(self, d_i, d_o, V, LF=0.97, eta_w = 0.97):
         """ Class constructor """
         # Compulsory parameters
         self.d_i = d_i  # [m] Tank internal diameter
         self.d_o = d_o  # [m] Tank external diameter
         self.V = V  # [m^3] Tank volume
-        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] Area of the surface
-        # perpendicular to the vertical axis
-        self.l = V / self.A_T  # [m] Tank height
+        self.eta_w = eta_w # Wall heat partitioning fraction
         self.roof_BC = "Neumann"  # Roof Temperature boundary condition,
+
+        # Calculated parameters
+        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] Area of the surface
+        # Perpendicular to the vertical axis
+        self.l = V / self.A_T  # [m] Tank height
+
         # "Neumann" or "Robin"
         self.thermophysical_it = False  # Thermophysical iteration
         self.LF = LF
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
+        
         # switch for the non-eq model
 
         # Initialise dimensionless grid with 100 nodes as default
@@ -99,7 +104,7 @@ class Tank:
         IC = np.append(VL_0, Tv_0)
 
         # Integrate
-        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-6, rtol=1e-6)
+        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-9, rtol=1e-6)
 
         # Set tank solution object with the volume and vapour temperature profiles
         # as a function of time
@@ -119,7 +124,7 @@ class Tank:
         self.LF = V_L / self.V
 
         # Computes total heat ingress to the liquid
-        Q_L_tot = self.Q_L_in + self.Q_b + self.Q_VL(self.cryogen.T_V)
+        Q_L_tot = self.Q_L_in + self.Q_b + self.Q_VL(self.cryogen.T_V) + self.Q_wi
 
         # Calculates latent heat of vaporisation
         dH_LV = self.cryogen.h_V - self.cryogen.h_L
@@ -177,8 +182,10 @@ class Tank:
         # Compute the second derivatives
         d2T_dz2 = (T[:-2] - 2*T[1:-1] + T[2:]) / dz**2
 
-        # Compute the wall heating
-        S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1])
+        # Compute the wall heating considering the wall heat partitioning.
+        # (1-eta_w) is the fraction of the external vapour heat ingress
+        # that is transferred in the vapour 
+        S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1]) * (1-self.eta_w)
 
         # Update dT
         dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + (alpha/self.cryogen.k_V_avg) * S_wall
@@ -189,8 +196,9 @@ class Tank:
         dT[0] = 0
 
         # 2nd order extrapolation
+        # Assumes that the wall heat flow partitioning also applies at the tank roof
         if self.roof_BC == "Robin":
-            dT[-1] = (4*dT[-2] - dT[-3])/(3 + 2*self.U_roof * dz)
+            dT[-1] = (4*dT[-2] - dT[-3])/(3 + 2 * self.U_roof * (1-self.eta_w) * dz)
         else:
             # Neumann boundary condition
             dT[-1] = (4*dT[-2] - dT[-3])/3
@@ -256,9 +264,15 @@ class Tank:
         plots.plot_tv(self)
         return
     
-    def plot_V_L(self):
+    def plot_V_L(self, unit='m3'):
         '''
         Plots liquid volume as a function of time
+
+        Inputs:
+            unit: 'm3', 'L', 'mL'
+            
+        Returns:
+            None
         '''
 
         if self.sol is None:
@@ -267,11 +281,11 @@ class Tank:
                             'and thereafter run tank.plot_V_L() again')  
 
         # Produce liquid volume plot
-        plots.plot_V_L(self)
+        plots.plot_V_L(self, unit)
     
     def plot_BOG(self, unit='kg/h'):
         '''
-        Plots liquid volume as a function of time
+        Plots boil off gas rate as a function of time
 
         Inputs:
             unit: 'kg/h', 'kg/s', 'g/s'
@@ -346,13 +360,18 @@ class Tank:
 
         # Reconstruct liquid and vapour heat ingresses
         l_L = self.sol.y[0] / self.A_T
-        delta_T = (self.T_air - self.cryogen.T_sat)
-        Q_L = self.U_L * (np.pi * self.d_o * l_L) * delta_T
-        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) * delta_T 
+
+        # Reconstruct: note that A_L, A_V are not used from the tank
+        # but reconstructed from the liquid volume
+        Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
+
+        # The driving force of Q_V is the average temperature
+        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
         
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
         self.data['Q_V'] = np.array(Q_V)
+        self.data['Q_Vw'] = np.array(Q_V) * self.eta_w
 
         # Evaporation rate in kg/s
         self.data['B_L'] = self.evap_rate()
@@ -423,10 +442,21 @@ class Tank:
         return np.pi * self.d_o * self.l * self.LF
 
     @property
+    def A_V(self):
+        """Tank wall area in contact with the vapour"""
+        return np.pi * self.d_o * self.l * (1-self.LF)
+
+    @property
     def Q_L_in(self):
         """ Liquid heat ingress through the walls
         in W """
         return self.U_L * self.A_L * (self.T_air - self.cryogen.T_sat)
+    
+    @property
+    def Q_wi(self):
+        """ Heat transferred directly to the vapour-liquid interface
+        through the tank wall in contact to the vapour / W """
+        return self.U_V * self.A_V * self.eta_w * (self.T_air - self.cryogen.Tv_avg)
     
     @property
     def v_z(self):
@@ -442,6 +472,7 @@ class Tank:
         """
         return self.v_z * self.A_T * self.cryogen.rho_V_avg
 
+
     @property
     def Q_b(self):
         if self.Q_b_fixed is None:
@@ -449,3 +480,10 @@ class Tank:
             return self.U_L * self.A_T * (self.T_air - self.cryogen.T_sat)
         else:
             return self.Q_b_fixed
+    
+    @property
+    def tau(self):
+        '''Provides a conservative estimate of the 
+        duration of the transient period
+        of rapid vapour heating'''
+        return self.l_V/self.v_z

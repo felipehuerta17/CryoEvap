@@ -42,20 +42,29 @@ def plot_tv(tank):
     # Show the plot
     plt.show()
 
-def plot_V_L(tank):
+def plot_V_L(tank, unit='m3'):
     '''
     Plots liquid volume
     Inputs:
         Tank object with a sol object produced by the evaporate() function
+        unit: Liquid volume units. Default: m3
+        Options: m^3, L, mL 
     
     Returns:
         None:
     '''
+
+    # Conversion factors for plotting
+    unit_conv = {'m3': 1, 'L': 1e3, 'mL': 1e6}
+
     # Access to the liquid volume
-    plt.plot(tank.sol.t, tank.sol.y[0])
+    plt.plot(tank.sol.t, tank.sol.y[0] * unit_conv[unit])
     plt.grid()
     plt.xlabel('Time / s')
-    plt.ylabel('$ V_L / m^3$')
+    if unit == "m3":
+        plt.ylabel('$V_L$ / $m^3$')
+    else:
+        plt.ylabel('$V_L$ / ' + unit)
     return
 
 def plot_BOG(tank, unit='kg/h'):
@@ -72,7 +81,7 @@ def plot_BOG(tank, unit='kg/h'):
     '''
     
     # Conversion factors for plotting
-    unit_conv = {'kg/h': 3600, 'kg/s': 1, 'g/s': 1000}
+    unit_conv = {'kg/h': 3600, 'kg/s': 1, 'g/h' : 3600*1e3, 'g/s': 1000}
 
     # Extract evaporation and BOG rates and convert to kg/h
     # Visualise evaporation and boil-off gas rate in kg/h
@@ -103,27 +112,37 @@ def plot_Q(tank, unit='kW'):
     # Conversion factors for plotting
     unit_conv = {'W': 1, 'kW': 1e-3}
 
-    fig, ax = plt.subplots(1, 3, figsize = [9,3])
+    fig, ax = plt.subplots(2, 2, figsize = [6,6])
 
     # Create space to breathe
     plt.subplots_adjust(wspace=0.5)
 
-    # Q_VL plot
-    ax[0].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL")
-    ax[0].set_ylabel("$\dot{Q}_{VL} / kW $")
-    ax[0].set_xlabel("Time / s")
-
     # Q_L_in plot
-    ax[1].plot(tank.sol.t, (tank.data['Q_L']* unit_conv[unit]))
-    ax[1].set_ylabel("$\dot{Q}_{L,in} / kW $")
-    ax[1].set_xlabel("Time / s")
+    ax[0][0].plot(tank.sol.t, (tank.data['Q_L']* unit_conv[unit]))
+    ax[0][0].set_ylabel("$\dot{Q}_L / kW $")
+    ax[0][0].set_xlabel("Time / s")
+    ax[0][0].grid()
 
-    ax[2].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]))
-    ax[2].set_ylabel("$\dot{Q}_{V,in} / kW $")
-    ax[2].set_xlabel("Time / s")
+    # Q_V_in plot
+    ax[0][1].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]))
+    ax[0][1].set_ylabel("$\dot{Q}_V / kW $")
+    ax[0][1].set_xlabel("Time / s")
+    ax[0][1].grid()
 
-    ax[1].set_title("Heat ingresses")
+    # Q_VL plot
+    ax[1][0].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL")
+    ax[1][0].set_ylabel("$\dot{Q}_{VL}$ / kW ")
+    ax[1][0].set_xlabel("Time / s")
+    ax[1][0].grid()
 
-    [axis.grid() for axis in ax]
+    # Q_{V,w} plot
+    ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw")
+    ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / kW ")
+    ax[1][1].set_xlabel("Time / s")
+    ax[1][1].grid()
+
+    ax[0][0].set_title("Heat ingresses")
+
+    # [axis.grid() for axis in ax]
     plt.show()
 

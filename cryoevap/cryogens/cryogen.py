@@ -33,7 +33,8 @@ class Cryogen:
         self.P = P  # Pressure / Pa
         self.T_sat = T_sat  # Saturation temperature / K
         self.T_V = T_sat  # Saturation temperature / K
-        self.rho_L = rho_L  # Liquid Density / kg*m^-3
+        self.Tv_avg = T_sat  # Saturation temperature / K
+        self.rho_L= rho_L  # Liquid Density / kg*m^-3
         self.rho_V = rho_V  # Vapour density / kg*m^-3
         self.rho_V_sat = rho_V  # Initialize vapour density at the interface
         self.h_L = h_L  # Liquid enthalpy J/kg
@@ -66,9 +67,9 @@ class Cryogen:
         self.T_sat = CP.PropsSI('T','P',p,'Q',1,fluid) # Saturation temperature / K
 
         # The initial vapour temperature is at equilibrium with the liquid
-        self.T_V_avg = self.T_sat                      # Vapour temperature / K
         self.T_V = self.T_sat                          # Initialise vapour temperature profile / K
-
+        self.Tv_avg = self.T_sat                      # Vapour temperature / K
+        
         self.rho_L = CP.PropsSI('D','P',p,'Q',0,fluid) # Liquid mass density
         self.rho_V = CP.PropsSI('D','P',p,'Q',1,fluid) # Vapour mass density
         self.rho_V_avg = self.rho_V
