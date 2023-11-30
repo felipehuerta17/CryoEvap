@@ -119,25 +119,25 @@ def plot_Q(tank, unit='kW'):
 
     # Q_L_in plot
     ax[0][0].plot(tank.sol.t, (tank.data['Q_L']* unit_conv[unit]))
-    ax[0][0].set_ylabel("$\dot{Q}_L / kW $")
+    ax[0][0].set_ylabel("$\dot{Q}_L$ / " + unit)
     ax[0][0].set_xlabel("Time / s")
     ax[0][0].grid()
 
     # Q_V_in plot
     ax[0][1].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]))
-    ax[0][1].set_ylabel("$\dot{Q}_V / kW $")
+    ax[0][1].set_ylabel("$\dot{Q}_V$ /  " + unit)
     ax[0][1].set_xlabel("Time / s")
     ax[0][1].grid()
 
     # Q_VL plot
     ax[1][0].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL")
-    ax[1][0].set_ylabel("$\dot{Q}_{VL}$ / kW ")
+    ax[1][0].set_ylabel("$\dot{Q}_{VL}$ / " + unit)
     ax[1][0].set_xlabel("Time / s")
     ax[1][0].grid()
 
     # Q_{V,w} plot
     ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw")
-    ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / kW ")
+    ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / " + unit)
     ax[1][1].set_xlabel("Time / s")
     ax[1][1].grid()
 
