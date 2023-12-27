@@ -21,26 +21,18 @@ class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
 
-    def __init__(self, d_i, d_o, V, LF=0.97, eta_w = 0.97):
+    def __init__(self, d_i, d_o, V, LF=0.97):
         """ Class constructor """
         # Compulsory parameters
         self.d_i = d_i  # [m] Tank internal diameter
         self.d_o = d_o  # [m] Tank external diameter
         self.V = V  # [m^3] Tank volume
-        self.eta_w = eta_w # Wall heat partitioning fraction
-        self.roof_BC = "Neumann"  # Roof Temperature boundary condition,
-
-        # Calculated parameters
-        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] Area of the surface
-        # Perpendicular to the vertical axis
+        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
         self.l = V / self.A_T  # [m] Tank height
-
-        # "Neumann" or "Robin"
-        self.thermophysical_it = False  # Thermophysical iteration
-        self.LF = LF
+        self.LF = LF # Initial liquid filling
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
-        
-        # switch for the non-eq model
+
+        # Simulation control
 
         # Initialise dimensionless grid with 100 nodes as default
         self.z_grid = np.linspace(0, 1, 100)
@@ -48,7 +40,7 @@ class Tank:
         # Solution object
         self.sol = None
 
-        # Time interval in second to plot vapour temperature profile
+        # Time interval in seconds to plot vapour temperature profile
         self.time_interval = 3600
 
         # Store integrated quantities as dictionaries
@@ -58,20 +50,38 @@ class Tank:
                     'drho_V_avg': [], 'dV_L': []}
         pass
 
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0):
+    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0.97):
         """Set separately tank heat transfer properties
-        Usage: set_HeatTransProps(self, U_L, U_V, Q_b, Q_roof, T_air)"""
-        self.U_L = U_L  # [W*m^-2*K^-1]Overall heat transfer coefficient
-        # for the liquid phase stored in the tank
-        self.U_V = U_V  # [W*m^-2*K^-1] Overall heat transfer coefficient
         
-        # Roof heat transfer coefficient
-        self.U_roof = U_V
-        # for the vapour phase stored in the tank
-        # Is there any Q_b_fixed?
-        self.Q_b_fixed = Q_b_fixed
-        self.Q_roof = Q_roof  # [W] Heat ingress through the roof
-        self.T_air = T_air  # [K] Temperature of the surrounding air /K
+        Inputs:
+            U_L: liquid phase overall heat transfer coefficient / W m^-2 K ^-1
+            U_V: vapour phase overall heat transfer coefficient / W m^-2 K ^-1
+            T_air: Temperature of the surroundings / K
+            Q_b_fixed: Fixed bottom heat ingress if specified 
+        
+        Returns:
+            None
+        """
+        # Tank parameters
+        self.U_L = U_L  
+        self.U_V = U_V 
+        self.Q_roof = Q_roof  
+        self.T_air = T_air 
+
+        # The walls and roof materials are the same, hence, it is assumed
+        # that their heat transfer coefficients are the same
+        self.U_roof = U_V         
+
+        # By default, the roof is thermally insulated
+        self.roof_BC = "Neumann"  
+
+        # In large scale applications, the tank bottom is heated by en
+        # electric element at a constant rate to prevent ground freezing. 
+        self.Q_b_fixed = Q_b_fixed 
+
+        # Wall heat partitioning fraction
+        self.eta_w = eta_w         
+
         pass
 
     def evaporate(self, t_f):
