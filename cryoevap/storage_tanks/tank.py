@@ -473,7 +473,7 @@ class Tank:
         """Update advective velocity with respect to tank liquid filling"""
         # Initial evaporation rate kg/s
         BL_0 = (self.Q_L_in + self.Q_b) / ((self.cryogen.h_V - self.cryogen.h_L))
-        v_z = 4 * BL_0 / (self.cryogen.rho_V_avg * np.pi * self.d_i ** 2)
+        v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
         return v_z
 
     @property
