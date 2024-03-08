@@ -50,7 +50,7 @@ class Tank:
                     'drho_V_avg': [], 'dV_L': []}
         pass
 
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0.97):
+    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0):
         """Set separately tank heat transfer properties
         
         Inputs:

@@ -56,12 +56,15 @@ class Cryogen:
         rho_ig = P / (r_gas_si * T)
         return rho_ig
     
-    def set_coolprops(self, fluid ="methane", p=100000):
+    def set_coolprops(self, p=100000):
         """
         Set thermophysical and thermodynamic
         properties calling CoolProp Helmholtz-based
         equation of state
         """
+
+
+        fluid = self.name
 
         self.P = p # Pressure / Pa
         self.T_sat = CP.PropsSI('T','P',p,'Q',1,fluid) # Saturation temperature / K
