@@ -40,7 +40,7 @@ def plot_tv(tank):
     ax.set_title('Vapour temperature profiles at different times')
 
     # Show the plot
-    plt.show()
+    # plt.show()
 
 def plot_V_L(tank, unit='m3'):
     '''
