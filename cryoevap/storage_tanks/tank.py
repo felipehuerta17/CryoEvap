@@ -114,7 +114,7 @@ class Tank:
         IC = np.append(VL_0, Tv_0)
 
         # Integrate
-        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-9, rtol=1e-6)
+        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-9, rtol=1e-7)        
 
         # Set tank solution object with the volume and vapour temperature profiles
         # as a function of time
@@ -344,12 +344,25 @@ class Tank:
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
 
+        # Reconstruct liquid length for heat transfer calculations
+        l_L = self.sol.y[0] / self.A_T
+
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
             T_v = self.sol.y[1:, i]
 
             # Calculate and append Q_VL
-            Q_VL.append(self.Q_VL(T_v))
+
+            # Update vapour thermal conductivity
+            self.cryogen.update_k_V(self.z_grid, T_v)
+            
+            # Calculate vapour temperature gradient from the vapour length
+            # at the desired tiemstep
+            dz = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
+            dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)    
+            
+            # Append Q_VL calculated using the Fourier's law
+            Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
 
             # Average vapour temperature
             Tv_avg.append(simps(T_v, self.z_grid))
@@ -368,10 +381,8 @@ class Tank:
         self.data['rho_V_avg'] = rho_V_avg
         self.data['Q_VL'] = np.array(Q_VL)
 
-        # Reconstruct liquid and vapour heat ingresses
-        l_L = self.sol.y[0] / self.A_T
-
-        # Reconstruct: note that A_L, A_V are not used from the tank
+        # Reconstruct liquid and vapour heat ingresses.
+        # Note that A_L, A_V are not used from the tank
         # but reconstructed from the liquid volume
         Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
 
