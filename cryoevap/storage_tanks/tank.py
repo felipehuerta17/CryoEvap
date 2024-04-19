@@ -241,11 +241,7 @@ class Tank:
             # Calculates latent heat of vaporisation
             dH_LV = self.cryogen.h_V - self.cryogen.h_L
 
-            # Extracts liquid volume
-            V_L = self.sol.y[0]
-
-            Q_L_in = 4 * V_L * self.d_o/(self.d_i**2) * self.U_L * (self.T_air - self.cryogen.T_sat)
-            return 1 /dH_LV * (self.Q_b + Q_L_in + self.data['Q_VL']) 
+            return 1 /dH_LV * (self.Q_b + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw']) 
         
     def Q_VL(self, T_V):
         '''
