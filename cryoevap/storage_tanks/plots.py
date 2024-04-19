@@ -57,8 +57,12 @@ def plot_V_L(tank, unit='m3'):
     # Conversion factors for plotting
     unit_conv = {'m3': 1, 'L': 1e3, 'mL': 1e6}
 
+    # Create a colormap
+    cmap = plt.get_cmap('cividis')
+
+
     # Access to the liquid volume
-    plt.plot(tank.sol.t, tank.sol.y[0] * unit_conv[unit])
+    plt.plot(tank.sol.t, tank.sol.y[0] * unit_conv[unit], color = cmap(1/6))
     plt.grid()
     plt.xlabel('Time / s')
     if unit == "m3":
@@ -79,6 +83,9 @@ def plot_BOG(tank, unit='kg/h'):
     Returns:
         None:
     '''
+
+    # Create a colormap
+    cmap = plt.get_cmap('cividis')
     
     # Conversion factors for plotting
     unit_conv = {'kg/h': 3600, 'kg/s': 1, 'g/h' : 3600*1e3, 'g/s': 1000}
@@ -86,8 +93,8 @@ def plot_BOG(tank, unit='kg/h'):
     # Extract evaporation and BOG rates and convert to kg/h
     # Visualise evaporation and boil-off gas rate in kg/h
 
-    plt.plot(tank.sol.t, tank.data['B_L'] * unit_conv[unit], label='Evaporation rate, $\dot{B}_L$')
-    plt.plot(tank.sol.t[1:], tank.data['BOG'][1:] * unit_conv[unit], label='Boil-off gas rate, $\dot{B}$') 
+    plt.plot(tank.sol.t, tank.data['B_L'] * unit_conv[unit], label='Evaporation rate, $\dot{B}_L$', color = cmap(1/6))
+    plt.plot(tank.sol.t[1:], tank.data['BOG'][1:] * unit_conv[unit], label='Boil-off gas rate, $\dot{B}$', color = cmap(5/6)) 
     plt.grid()
     plt.xlabel('Time / s')
     plt.ylabel('Mass flow $/$ ' + unit)
@@ -109,6 +116,9 @@ def plot_Q(tank, unit='kW'):
         None:
     '''
 
+    # Create a colormap
+    cmap = plt.get_cmap('cividis')
+
     # Conversion factors for plotting
     unit_conv = {'W': 1, 'kW': 1e-3}
 
@@ -118,26 +128,30 @@ def plot_Q(tank, unit='kW'):
     plt.subplots_adjust(wspace=0.5)
 
     # Q_L_in plot
-    ax[0][0].plot(tank.sol.t, (tank.data['Q_L']* unit_conv[unit]))
+    ax[0][0].plot(tank.sol.t, (tank.data['Q_L']* unit_conv[unit]), color = cmap(1/6))
     ax[0][0].set_ylabel("$\dot{Q}_L$ / " + unit)
     ax[0][0].set_xlabel("Time / s")
     ax[0][0].grid()
 
     # Q_V_in plot
-    ax[0][1].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]))
+    ax[0][1].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]), color = cmap(1/6))
+    ax[0][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(5/6))
     ax[0][1].set_ylabel("$\dot{Q}_V$ /  " + unit)
     ax[0][1].set_xlabel("Time / s")
     ax[0][1].grid()
 
     # Q_VL plot
-    ax[1][0].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL")
+    ax[1][0].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL", color = cmap(1/6))
     ax[1][0].set_ylabel("$\dot{Q}_{VL}$ / " + unit)
     ax[1][0].set_xlabel("Time / s")
     ax[1][0].grid()
 
     # Q_{V,w} plot
-    ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw")
-    ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / " + unit)
+    #ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(1/6))
+    ax[1][1].plot(tank.sol.t, ( (tank.data['Q_Vw'] + tank.data['Q_VL'] + tank.data['Q_L'])  *
+                                unit_conv[unit]), label="Q_{tot}",color = cmap(1/6))
+    # ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / " + unit)
+    ax[1][1].set_ylabel("$\dot{Q}_{tot}$ / " + unit)
     ax[1][1].set_xlabel("Time / s")
     ax[1][1].grid()
 
