@@ -195,10 +195,19 @@ class Tank:
         # Compute the wall heating considering the wall heat partitioning.
         # (1-eta_w) is the fraction of the external vapour heat ingress
         # that is transferred in the vapour 
-        S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1]) * (1-self.eta_w)
 
+        #S_wall for a cylinder
+        #S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1]) * (1-self.eta_w)
+
+        #S_wall for a sphere
+        S_wall = 2*self.U_V*(self.T_air - T[1:-1]) * (1-self.eta_w) / (self.cryogen.rho_V_avg * self.cryogen.cp_V_avg * np.sqrt(abs(2*(self.l - L_dry)*(self.d_i/2) - 
+                                                                                                                                    (self.l - L_dry)**2)))
+
+        shape = 2*(self.d_i/2 - (self.l-L_dry))*(-self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg
+                                                                                                                                *abs((self.l-L_dry)**2 - 2*(self.l-L_dry)*self.d_i/2))
         # Update dT
-        dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + (alpha/self.cryogen.k_V_avg) * S_wall
+        #dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + (alpha/self.cryogen.k_V_avg) * S_wall (this is the cylindrical equation)
+        dT[1:-1] = alpha*d2T_dz2 - (v_z) * dT_dz + S_wall + shape
 
         # DIFFERENTIAL BOUNDARY CONDITIONS
         # In the vapour-liquid interface the
@@ -383,7 +392,10 @@ class Tank:
         Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
 
         # The driving force of Q_V is the average temperature
-        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
+        #Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
+
+        #Q_V with a different surface area
+        Q_V = self.U_V*((np.pi*self.d_o**2)/2 + ((self.d_i/2 - l_L)*np.pi*self.d_o))*(self.T_air - self.data['Tv_avg'])
         
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
