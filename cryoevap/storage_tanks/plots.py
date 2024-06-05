@@ -134,17 +134,17 @@ def plot_Q(tank, unit='kW'):
     ax[0][0].grid()
 
     # Q_V_in plot
-    ax[0][1].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]), color = cmap(1/6))
-    ax[0][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(5/6))
-    ax[0][1].set_ylabel("$\dot{Q}_V$ /  " + unit)
-    ax[0][1].set_xlabel("Time / s")
-    ax[0][1].grid()
-
-    # Q_VL plot
-    ax[1][0].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL", color = cmap(1/6))
-    ax[1][0].set_ylabel("$\dot{Q}_{VL}$ / " + unit)
+    ax[1][0].plot(tank.sol.t, (tank.data['Q_V'] * unit_conv[unit]), color = cmap(1/6))
+    ax[1][0].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(5/6))
+    ax[1][0].set_ylabel("$\dot{Q}_V$ /  " + unit)
     ax[1][0].set_xlabel("Time / s")
     ax[1][0].grid()
+
+    # Q_VL plot
+    ax[0][1].plot(tank.sol.t, (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL", color = cmap(1/6))
+    ax[0][1].set_ylabel("$\dot{Q}_{VL}$ / " + unit)
+    ax[0][1].set_xlabel("Time / s")
+    ax[0][1].grid()
 
     # Q_{V,w} plot
     #ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(1/6))
