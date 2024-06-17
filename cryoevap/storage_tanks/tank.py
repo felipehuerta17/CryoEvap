@@ -21,15 +21,22 @@ class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
 
-    def __init__(self, d_i, d_o, V, LF=0.97):
+    def __init__(self, d_i, d_o, V, vapour_geometry,liquid_geometry,LF=0.97):
         """ Class constructor """
         # Compulsory parameters
         self.d_i = d_i  # [m] Tank internal diameter
         self.d_o = d_o  # [m] Tank external diameter
         self.V = V  # [m^3] Tank volume
-        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
-        self.l = V / self.A_T  # [m] Tank height
         self.LF = LF # Initial liquid filling
+        self.Geo_v = vapour_geometry
+        self.Geo_l = liquid_geometry
+        if self.Geo_l=="cylindrical":
+            self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
+            self.l = V / self.A_T  # [m] Tank height
+        elif self.Geo_l=="spherical":
+            self.l = d_i
+            self.z = self.l*self.LF
+            self.A_T = abs(np.pi*(2*self.d_i/2 * self.z - self.z**2))
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
 
         # Simulation control
@@ -108,13 +115,14 @@ class Tank:
 
         # Robin BC initial condition
         Tv_0[-1] = ((2 * self.U_roof * (1-self.eta_w) * dz * self.T_air/self.cryogen.k_V_avg +
-                    4 * Tv_0[-2] - Tv_0[-3])/(3 + 2 * self.U_roof * (1-self.eta_w) * dz * self.cryogen.k_V_avg))
+                    4 * Tv_0[-2] - Tv_0[-3])/(3 + 2 * self.U_roof * (1-self.eta_w)
+                                              * dz * self.cryogen.k_V_avg))
 
         # Concatenate initial conditions in a single vector
         IC = np.append(VL_0, Tv_0)
 
         # Integrate
-        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-9, rtol=1e-7)        
+        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-9, rtol=1e-7)
 
         # Set tank solution object with the volume and vapour temperature profiles
         # as a function of time
@@ -132,7 +140,9 @@ class Tank:
 
         # Updates liquid filling
         self.LF = V_L / self.V
-
+        if self.Geo_l == "spherical":
+            self.z = np.roots([-np.pi/3,np.pi*self.l/2,0,-V_L])[1]
+            self.A_T = abs(np.pi*(2*self.d_i/2 * self.z - self.z**2))
         # Computes total heat ingress to the liquid
         Q_L_tot = self.Q_L_in + self.Q_b + self.Q_VL(self.cryogen.T_V) + self.Q_wi
 
@@ -153,7 +163,10 @@ class Tank:
         # print("t = %.3f s" % t)
 
         # Grid and properties initialization
-        L_dry = self.l*(1-self.LF) # Dry height of the tank
+        if self.Geo_l == "cylindrical":
+            L_dry = self.l*(1-self.LF) # Dry height of the tank
+        elif self.Geo_l == "spherical":
+            L_dry = self.l - self.z
         
         # Update average vapour temperature using Simpson's rule
         self.cryogen.Tv_avg = simps(T, self.z_grid)
@@ -175,16 +188,16 @@ class Tank:
         v_int = v_z * (self.cryogen.rho_V_avg/self.cryogen.rho_L)
 
         # Vapour thermal diffusivity
-        alpha = self.cryogen.k_V_avg/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg) 
+        alpha = self.cryogen.k_V_avg/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg)
 
         # Uniform spacing
         dz = (self.z_grid[1] - self.z_grid[0])*L_dry
 
         # Number of grid points
-        n = len(self.z_grid) 
+        n = len(self.z_grid)
 
         # Initialise temperature change vector
-        dT = np.zeros(n) 
+        dT = np.zeros(n)
 
         # Compute the differences
         dT_dz = (T[1:-1] - T[:-2]) / dz
@@ -196,18 +209,23 @@ class Tank:
         # (1-eta_w) is the fraction of the external vapour heat ingress
         # that is transferred in the vapour 
 
-        #S_wall for a cylinder
-        #S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1]) * (1-self.eta_w)
+        if self.Geo_v == "cylindrical":
+            #S_wall for a cylinder
+            S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1]) * (1-self.eta_w)
 
-        #S_wall for a sphere
-        S_wall = 2*self.U_V*(self.T_air - T[1:-1]) * (1-self.eta_w) / (self.cryogen.rho_V_avg * self.cryogen.cp_V_avg * np.sqrt(abs(2*(self.l - L_dry)*(self.d_i/2) - 
-                                                                                                                                    (self.l - L_dry)**2)))
+            # Update dT
+            dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + (alpha/self.cryogen.k_V_avg) * S_wall
 
-        shape = 2*(self.d_i/2 - (self.l-L_dry))*(-self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg
-                                                                                                                                *abs((self.l-L_dry)**2 - 2*(self.l-L_dry)*self.d_i/2))
-        # Update dT
-        #dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + (alpha/self.cryogen.k_V_avg) * S_wall (this is the cylindrical equation)
-        dT[1:-1] = alpha*d2T_dz2 - (v_z) * dT_dz + S_wall + shape
+        elif self.Geo_v == "spherical":
+            #S_wall for a sphere
+            S_wall = 2*self.U_V*(self.T_air - T[1:-1]) * (1-self.eta_w) / (self.cryogen.rho_V_avg * self.cryogen.cp_V_avg *
+                                                                           np.sqrt(abs(2*(self.l/2)*(self.z) - (self.z)**2)))
+            #shape factor
+            shape = 2*(self.d_i/2 - (self.l-L_dry))*(-self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
+                        + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*abs((self.z)**2 - 2*(self.z)*self.l/2))
+            #Update dT
+            dT[1:-1] = alpha*d2T_dz2 - (v_z) * dT_dz + S_wall + shape
+        
 
         # DIFFERENTIAL BOUNDARY CONDITIONS
         # In the vapour-liquid interface the
@@ -297,7 +315,7 @@ class Tank:
 
         # Produce liquid volume plot
         plots.plot_V_L(self, unit)
-    
+
     def plot_BOG(self, unit='kg/h'):
         '''
         Plots boil off gas rate as a function of time
@@ -315,7 +333,7 @@ class Tank:
 
         # Produce liquid volume plot
         plots.plot_BOG(self, unit)
-    
+
     def plot_Q(self, unit='kW'):
         '''
         Plots vapour to liquid heat transfer rate
@@ -331,17 +349,17 @@ class Tank:
             raise TypeError('The solution object tank.sol does not exist.\n'
                             'Run tank.evaporate(t) to generate a solution\n'
                             'and thereafter run tank.plot_QVL() again') 
-        
+
         # Produce liquid volume plot
         plots.plot_Q(self, unit)
 
-    
+
     def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
         to liquid heat transfer rate (Q_VL), the liquid heat ingress
         (Q_Lin) and the vapour heat ingress (Q_V)
-        '''  
+        '''
         Q_VL = []
         Tv_avg = []
         rho_V_avg = []
@@ -350,7 +368,12 @@ class Tank:
         self.data['Time'] = self.sol.t
 
         # Reconstruct liquid length for heat transfer calculations
-        l_L = self.sol.y[0] / self.A_T
+        if self.Geo_l=="cylindrical":
+            l_L = self.sol.y[0] / self.A_T
+        elif self.Geo_l =="spherical":
+            l_L = np.ones_like(self.sol.y[0])
+            for i in range(len(self.sol.y[0])):
+                l_L[i] = np.roots([-np.pi/3,np.pi*self.l/2,0,-self.sol.y[0][i]])[1]
 
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
@@ -360,12 +383,12 @@ class Tank:
 
             # Update vapour thermal conductivity
             self.cryogen.update_k_V(self.z_grid, T_v)
-            
+
             # Calculate vapour temperature gradient from the vapour length
             # at the desired tiemstep
             dz = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
-            dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)    
-            
+            dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)
+
             # Append Q_VL calculated using the Fourier's law
             Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
 
@@ -375,7 +398,7 @@ class Tank:
             # Average vapour density
             self.cryogen.update_rho_V(self.z_grid, T_v)
             rho_V_avg.append(self.cryogen.rho_V_avg)
-        
+
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
         rho_V_avg = np.array(rho_V_avg)
@@ -390,13 +413,20 @@ class Tank:
         # Note that A_L, A_V are not used from the tank
         # but reconstructed from the liquid volume
         Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
+        # elif self.Geo_l == "spherical":
+        #     Q_L = self.U_L*(np.pi*self.l*l_L)*(self.T_air - self.cryogen.T_sat) #must be a function of liquid length
+
 
         # The driving force of Q_V is the average temperature
-        #Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
+        if self.Geo_v == "cylindrical" or self.Geo_v == "spherical":
+            Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
 
-        #Q_V with a different surface area
-        Q_V = self.U_V*((np.pi*self.d_o**2)/2 + ((self.d_i/2 - l_L)*np.pi*self.d_o))*(self.T_air - self.data['Tv_avg'])
-        
+        elif self.Geo_v == "spherical" and self.Geo_l == "cylindrical":
+            Q_V = self.U_V*((np.pi*self.d_o**2)/2 + ((self.d_i/2 - l_L)*np.pi*self.d_o))*(self.T_air - self.data['Tv_avg'])
+
+        # elif self.Geo_v == "spherical" and self.Geo_l == "spherical":
+        #     Q_V = self.U_V*(4*np.pi*(1-self.LF)*self.d_o**2)*(self.T_air-self.data['Tv_avg'])
+
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
         self.data['Q_V'] = np.array(Q_V)
@@ -404,7 +434,7 @@ class Tank:
 
         # Evaporation rate in kg/s
         self.data['B_L'] = self.evap_rate()
-        
+
         # Average vapour density time derivative
         self.data['drho_V_avg'] = self.dydt(self.sol.t, rho_V_avg)
 
@@ -416,7 +446,7 @@ class Tank:
             + self.data['rho_V_avg'] * self.data['dV_L']
             - (self.V - self.data['V_L']) * self.data['drho_V_avg'])
         return
-    
+
     def dydt(self, t, y):
         '''
         Calculate state variable derivative finite
@@ -441,7 +471,7 @@ class Tank:
         dy[-1] = (3*y[-1] - 4*y[-2] + y[-3])/(2*dt)
         return dy
 
-    
+
     def interpolate(self, t, y, t_int = 0):
         '''
         Interpolate/extrapolate dependent variable 
@@ -459,40 +489,53 @@ class Tank:
 
 
     # Properties
-    
+
     @property
     def l_V(self):
         """Update liquid filling and vapour length"""
-        return self.l * (1 - self.LF)  # [m] sets vapour length
+        if self.Geo_l=="cylindrical":
+            return self.l * (1 - self.LF)  # [m] sets vapour length
+        elif self.Geo_l =="spherical":
+            return self.l - self.z
 
     @property
     def A_L(self):
         """Tank wall area in contact with the liquid"""
-        return np.pi * self.d_o * self.l * self.LF
+        if self.Geo_l == "cylindrical":
+            return np.pi * self.d_o * self.l * self.LF
+        elif self.Geo_l == "spherical":
+            return np.pi*self.l*self.z
 
     @property
     def A_V(self):
         """Tank wall area in contact with the vapour"""
-        return np.pi * self.d_o * self.l * (1-self.LF)
+        if self.Geo_l == "cylindrical":
+            return np.pi * self.d_o * self.l * (1-self.LF)
+        elif self.Geo_l == "spherical":
+            return np.pi*self.l * (self.l-self.z)
 
     @property
     def Q_L_in(self):
         """ Liquid heat ingress through the walls
         in W """
         return self.U_L * self.A_L * (self.T_air - self.cryogen.T_sat)
-    
+
     @property
     def Q_wi(self):
         """ Heat transferred directly to the vapour-liquid interface
         through the tank wall in contact to the vapour / W """
         return self.U_V * self.A_V * self.eta_w * (self.T_air - self.cryogen.Tv_avg)
-    
+
     @property
     def v_z(self):
         """Update advective velocity with respect to tank liquid filling"""
         # Initial evaporation rate kg/s
         BL_0 = (self.Q_L_in + self.Q_b) / ((self.cryogen.h_V - self.cryogen.h_L))
-        v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
+        if self.Geo_v == "cylindrical":
+            v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
+        elif self.Geo_v == "spherical":
+            z = self.l*self.LF
+            v_z = BL_0/(np.pi*abs(2*z*self.d_i/2 - z**2))
         return v_z
 
     @property
@@ -503,13 +546,13 @@ class Tank:
 
 
     @property
-    def Q_b(self):
+    def Q_b(self): #needs to be changed for spherical
         if self.Q_b_fixed is None:
             "If Q_b_fixed is not set, calculate"
             return self.U_L * self.A_T * (self.T_air - self.cryogen.T_sat)
         else:
             return self.Q_b_fixed
-    
+
     @property
     def tau(self):
         '''Provides a conservative estimate of the 
