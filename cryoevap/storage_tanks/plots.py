@@ -69,6 +69,7 @@ def plot_V_L(tank, unit='m3'):
         plt.ylabel('$V_L$ / $m^3$')
     else:
         plt.ylabel('$V_L$ / ' + unit)
+    plt.show()
     return
 
 def plot_BOG(tank, unit='kg/h'):
@@ -160,3 +161,62 @@ def plot_Q(tank, unit='kW'):
     # [axis.grid() for axis in ax]
     plt.show()
 
+def plot_l_L(tank):
+    cmap = plt.get_cmap('cividis')
+
+    #unit_conv = {'m': 1, 'L': 1e3, 'mL': 1e6}
+
+    # Extract evaporation and BOG rates and convert to kg/h
+    # Visualise evaporation and boil-off gas rate in kg/h
+
+    plt.plot(tank.sol.t, tank.data["z"], color = cmap(1/6))
+    plt.grid()
+    plt.xlabel('Time / s')
+    plt.ylabel('$l_L$ / $m$')
+    plt.show()
+    return
+
+def plot_A_T(tank):
+    cmap = plt.get_cmap('cividis')
+
+    #unit_conv = {'m': 1, 'L': 1e3, 'mL': 1e6}
+
+    # Extract evaporation and BOG rates and convert to kg/h
+    # Visualise evaporation and boil-off gas rate in kg/h
+
+    plt.plot(tank.sol.t, tank.data["A_T"], color = cmap(1/6))
+    plt.grid()
+    plt.xlabel('Time / s')
+    plt.ylabel('$A_T$ / $m^2$')
+    plt.show()
+    return
+
+def plot_LF(tank):
+    cmap = plt.get_cmap('cividis')
+
+    #unit_conv = {'m': 1, 'L': 1e3, 'mL': 1e6}
+
+    # Extract evaporation and BOG rates and convert to kg/h
+    # Visualise evaporation and boil-off gas rate in kg/h
+
+    plt.plot(tank.sol.t, tank.data["LF"], color = cmap(1/6))
+    plt.grid()
+    plt.xlabel('Time / s')
+    plt.ylabel('$LF$')
+    plt.show()
+    return
+
+def plot_rho_V_avg(tank):
+    cmap = plt.get_cmap('cividis')
+
+    #unit_conv = {'m': 1, 'L': 1e3, 'mL': 1e6}
+
+    # Extract evaporation and BOG rates and convert to kg/h
+    # Visualise evaporation and boil-off gas rate in kg/h
+
+    plt.plot(tank.sol.t, tank.data["rho_V_avg"], color = cmap(1/6))
+    plt.grid()
+    plt.xlabel('Time / s')
+    plt.ylabel('$rho$')
+    plt.show()
+    return

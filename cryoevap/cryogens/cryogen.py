@@ -89,7 +89,7 @@ class Cryogen:
         self.cp_V_avg = self.cp_V # Initialise cp_avg
         self.MW = MW = CP.PropsSI(fluid,'molemass')
     
-    def update_rho_V(self, z_grid, T_V):
+    def update_rho_V(self, z_grid, T_V, radius=None):
         '''
         Update vapour density
 
@@ -105,17 +105,21 @@ class Cryogen:
         T_V_shift[0] = T_V_shift[0] + 1e-3
 
         # Compute vapour density field
-        rho_V = CP.PropsSI('D','P', self.P,'T',T_V_shift, self.name)
+        rho_V = CP.PropsSI('D','P|gas', self.P,'T',T_V_shift, self.name)
+        
 
         # Update properties if calling CoolProp was successful
         if np.any(np.isnan(rho_V)) or np.any(np.isinf(rho_V)):
             return
         
         # Compute average density on a unit-length grid
-        self.rho_V_avg =  simps(rho_V, z_grid)
+        if radius is None:
+            self.rho_V_avg =  simps(rho_V, z_grid)
+        else:
+            self.rho_V_avg = simps(rho_V*radius, z_grid)/simps(radius,z_grid)
         return
     
-    def update_k_V(self, z_grid, T_V):
+    def update_k_V(self, z_grid, T_V, radius = None):
         '''
         Update vapour thermal conductivity
 
@@ -131,16 +135,19 @@ class Cryogen:
         T_V_shift = np.copy(T_V)
         T_V_shift[0] = T_V_shift[0] + 1e-3
 
-        k_V = CP.PropsSI('L','P',self.P,'T',T_V_shift, self.name)
+        k_V = CP.PropsSI('L','P',self.P,'T|gas',T_V_shift, self.name)
 
         # Update properties  if calling CoolProp was successful
         if np.any(np.isnan(k_V)) or np.any(np.isinf(k_V)):
             return
 
         # Update average vapour density
-        self.k_V_avg = simps(k_V, z_grid)
+        if radius is None:
+            self.k_V_avg = simps(k_V, z_grid)
+        else:
+            self.k_V_avg = simps(k_V*radius,z_grid)/simps(radius,z_grid)
     
-    def update_cp_V(self, z_grid, T_V):
+    def update_cp_V(self, z_grid, T_V, radius = None):
         '''
         Update vapour specific heat capacity
 
@@ -157,10 +164,13 @@ class Cryogen:
         T_V_shift[0] = T_V_shift[0] + 1e-3
 
         # Compute vapour specific heat capacity field
-        cp_V = CP.PropsSI('C','P',self.P,'T',T_V_shift, self.name)
+        cp_V = CP.PropsSI('C','P',self.P,'T|gas',T_V_shift, self.name)
 
         # Update average vapour density if calling CoolProp was successful
         if np.any(np.isnan(cp_V)) or np.any(np.isinf(cp_V)):
             return
-        self.cp_V_avg = simps(cp_V, z_grid)
+        if radius is None:
+            self.cp_V_avg = simps(cp_V, z_grid)
+        else:
+            self.cp_V_avg = simps(cp_V*radius,z_grid)/simps(radius,z_grid)
 
