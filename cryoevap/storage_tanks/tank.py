@@ -114,7 +114,7 @@ class Tank:
         IC = np.append(VL_0, Tv_0)
 
         # Integrate
-        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='Radau', atol=1e-9, rtol=1e-7)        
+        sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='RK45', atol=1e-6, rtol=1e-6)        
 
         # Set tank solution object with the volume and vapour temperature profiles
         # as a function of time
@@ -479,7 +479,7 @@ class Tank:
     def v_z(self):
         """Update advective velocity with respect to tank liquid filling"""
         # Initial evaporation rate kg/s
-        BL_0 = (self.Q_L_in + self.Q_b) / ((self.cryogen.h_V - self.cryogen.h_L))
+        BL_0 = (self.Q_L_in + self.Q_b + self.Q_wi) / ((self.cryogen.h_V - self.cryogen.h_L))
         v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
         return v_z
 
