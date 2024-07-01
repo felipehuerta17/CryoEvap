@@ -231,12 +231,28 @@ class Tank:
             S_wall = 2*self.U_V*(self.T_air - T[1:-1]) * (1-self.eta_w) / (self.cryogen.rho_V_avg * self.cryogen.cp_V_avg *
                                                                            np.sqrt(abs(2*(self.l/2)*(self.z_grid[1:-1]*L_dry) - (self.z_grid[1:-1]*L_dry)**2)))
             #shape factor
-            shape = 2*(self.l/2 - self.z_grid[1:-1]*L_dry)*(-self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
+            #shape = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry)) * (-self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
+            #            + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*abs((self.z_grid[1:-1]*L_dry)**2 - 2*(self.z_grid[1:-1]*L_dry)*self.l/2))
+            
+            # shape factor conduction only
+            shape = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry)) * (
                         + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*abs((self.z_grid[1:-1]*L_dry)**2 - 2*(self.z_grid[1:-1]*L_dry)*self.l/2))
+
+            # Debug prints
+            # numerator = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry))
+            # print("numerator", numerator)
+
+            convection_geom = -self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
+            print("convection_geom", convection_geom)
+
+            conduction_geom =  self.cryogen.k_V_avg*dT_dz
+            print("conduction_geom", conduction_geom)
+            
+
             #Update dT
-            dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + S_wall #+ shape
-            if any(dT<0):
-                print(dT," ",alpha*d2T_dz2," ",(v_z-v_int)*dT_dz," ",S_wall," ",shape," ",t)
+            dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + S_wall + shape
+            #if any(dT<0):
+            #    print(dT," ",alpha*d2T_dz2," ",(v_z-v_int)*dT_dz," ",S_wall," ",shape," ",t)
 
 
         # DIFFERENTIAL BOUNDARY CONDITIONS
