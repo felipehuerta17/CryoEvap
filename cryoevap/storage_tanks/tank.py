@@ -14,6 +14,8 @@ from scipy.integrate import simps
 # Linear interpolant to reconstruct solutions
 from scipy.interpolate import interp1d
 
+from scipy.optimize import fsolve
+
 # Plotting routines
 from . import plots
 
@@ -30,6 +32,7 @@ class Tank:
         self.LF = LF # Initial liquid filling
         self.Geo_v = vapour_geometry
         self.Geo_l = liquid_geometry
+
         if self.Geo_l=="cylindrical":
             self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
             self.l = V / self.A_T  # [m] Tank height
@@ -38,6 +41,9 @@ class Tank:
             self.z = np.roots([-np.pi/3,np.pi*self.l/2,0,-self.V*self.LF])[1]
             assert(self.z<self.l and self.z>=0 and isinstance(self.z,float))
             self.A_T = abs(np.pi*(2*self.d_i/2 * self.z - self.z**2))
+        elif self.Geo_l=="horizontal cylinder":
+            self.l = V/(np.pi*(d_i/2)**2)
+            self.z = fsolve(self.h_cylinder_vol,[self.LF*self.d_i])[0]
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
 
         # Simulation control
@@ -145,6 +151,9 @@ class Tank:
             self.z = np.roots([-np.pi/3,np.pi*self.l/2,0,-self.V*self.LF])[1]
             assert(self.z<self.l and self.z>=0 and isinstance(self.z,float))
             self.A_T = abs(np.pi*(2*self.l/2 * self.z - self.z**2))
+        elif self.Geo_l == "horizontal cylinder":
+            self.z = fsolve(self.h_cylinder_vol,[self.z])[0]
+            self.A_T = self.l*np.sqrt(abs(2*self.z*self.d_i/2 - self.z**2))
 
         # Computes total heat ingress to the liquid
         Q_L_tot = self.Q_L_in + self.Q_b + self.Q_VL(self.cryogen.T_V) + self.Q_wi
@@ -168,11 +177,11 @@ class Tank:
         # Grid and properties initialization
         if self.Geo_l == "cylindrical":
             L_dry = self.l*(1-self.LF) # Dry height of the tank
-        elif self.Geo_l == "spherical":
+        elif self.Geo_l == "spherical" or self.Geo_l == "horizontal cylinder":
             L_dry = self.l - self.z
 
         # Update average vapour temperature using Simpson's rule
-        if self.Geo_v == "spherical":
+        if self.Geo_v == "spherical" or self.Geo_v == "horizontal cylinder":
             h_grid = self.z_grid*(L_dry)+self.z - (self.z_grid[1]-self.z_grid[0])*L_dry/2
             #h_grid = self.z_grid*(L_dry)+self.z
             radius = np.sqrt(abs(2*h_grid*self.l/2 - h_grid**2))
@@ -242,11 +251,11 @@ class Tank:
             # numerator = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry))
             # print("numerator", numerator)
 
-            convection_geom = -self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
-            print("convection_geom", convection_geom)
+            # convection_geom = -self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
+            # print("convection_geom", convection_geom)
 
-            conduction_geom =  self.cryogen.k_V_avg*dT_dz
-            print("conduction_geom", conduction_geom)
+            # conduction_geom =  self.cryogen.k_V_avg*dT_dz
+            # print("conduction_geom", conduction_geom)
             
 
             #Update dT
@@ -296,7 +305,11 @@ class Tank:
             # Calculates latent heat of vaporisation
             dH_LV = self.cryogen.h_V - self.cryogen.h_L
 
-            return 1 /dH_LV * (self.Q_b + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw']) 
+            return 1 /dH_LV * (self.Q_b + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw'])
+        
+    def h_cylinder_vol(self,z,V):
+            return [self.l*(((z-self.d_i/2)*np.sqrt(-z*(z-self.d_i)))/2 + np.arcsin((z-self.d_i/2)/(self.d_i/2))*(self.d_i/2)**2 +
+                       ((self.d_i/2)**2)*np.pi/2) - self.LF*self.V]
         
     def Q_VL(self, T_V):
         '''
@@ -430,6 +443,11 @@ class Tank:
             for i in range(len(self.sol.y[0])):
                 l_L[i] = np.roots([-np.pi/3,np.pi*self.l/2,0,-self.sol.y[0][i]])[1]
                 assert(l_L[i]<self.l and l_L[i]>=0)
+        elif self.Geo_l == "horizontal cylinder":
+            l_L = np.ones_like(self.sol.y[0])
+            for i in range(len(self.sol.y[0])):
+                self.LF = self.sol.y[0][i]/self.V
+                l_L[i] = fsolve(self.h_cylinder_vol,[self.LF*self.d_i])[0]
 
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
@@ -438,7 +456,7 @@ class Tank:
             # Calculate and append Q_VL
 
             # Update vapour thermal conductivity
-            if self.Geo_v == "spherical":
+            if self.Geo_v == "spherical" or self.Geo_v == "horizontal cylinder":
                 #h_grid = self.z_grid*(self.l-l_L[i])+l_L[i]
                 h_grid = self.z_grid*(self.l-l_L[i])+l_L[i] - (self.z_grid[1]-self.z_grid[0])*(self.l-l_L[i])/2
                 radius = np.sqrt(abs(2*h_grid*self.l/2 - h_grid**2))
@@ -492,6 +510,11 @@ class Tank:
         elif self.Geo_v == "spherical" and self.Geo_l == "cylindrical":
             Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
             Q_V = self.U_V*((np.pi*self.d_o**2)/2 + ((self.d_i/2 - l_L)*np.pi*self.d_o))*(self.T_air - self.data['Tv_avg'])
+        elif self.Geo_l == "horizontal cylinder" and self.Geo_v == "horizontal cylinder":
+            SA_L = ((((self.d_o/2)**2)*((2*np.arccos(1-self.z/(self.d_o/2))))-np.sin(2*np.arccos(1-self.z/(self.d_o/2))))+
+                              (self.d_o/2)*np.arccos(1-self.z/(self.d_o/2))*self.l)
+            Q_L = self.U_L * SA_L* (self.T_air - self.cryogen.T_sat)
+            Q_V = self.U_V*(2*np.pi*(self.d_o/2)**2 + 2*np.pi*(self.d_o/2)*self.l - SA_L)*(self.T_air-self.data["Tv_avg"])
 
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
@@ -561,7 +584,7 @@ class Tank:
         """Update liquid filling and vapour length"""
         if self.Geo_l=="cylindrical":
             return self.l * (1 - self.LF)  # [m] sets vapour length
-        elif self.Geo_l =="spherical":
+        elif self.Geo_l =="spherical" or self.Geo_l == "horizontal cylinder":
             return self.l - self.z
 
     @property
@@ -571,6 +594,9 @@ class Tank:
             return np.pi * self.d_o * self.l * self.LF
         elif self.Geo_l == "spherical":
             return np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)
+        elif self.Geo_l == "horizontal cylinder":
+            return ((((self.d_o/2)**2)*((2*np.arccos(1-self.z/(self.d_o/2))))-np.sin(2*np.arccos(1-self.z/(self.d_o/2))))+
+                              (self.d_o/2)*np.arccos(1-self.z/(self.d_o/2))*self.l)
 
     @property
     def A_V(self):
@@ -579,6 +605,9 @@ class Tank:
             return np.pi * self.d_o * self.l * (1-self.LF)
         elif self.Geo_l == "spherical":
             return np.pi*self.d_o * (self.d_o-(self.z + (self.d_o - self.d_i)/2))
+        elif self.Geo_l == "horizontal cylinder":
+            return np.pi*(self.d_o/2)**2 + 2*np.pi*(self.d_o/2)*self.l - ((((self.d_o/2)**2)*((2*np.arccos(1-self.z/(self.d_o/2))))-
+                    np.sin(2*np.arccos(1-self.z/(self.d_o/2))))+(self.d_o/2)*np.arccos(1-self.z/(self.d_o/2))*self.l)
 
     @property
     def Q_L_in(self):
@@ -601,6 +630,8 @@ class Tank:
             v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
         elif self.Geo_v == "spherical":
             v_z = BL_0/(self.cryogen.rho_V_sat*np.pi*abs(2*self.z*self.d_i/2 - self.z**2))
+        elif self.Geo_v == "horizontal cylinder":
+            v_z = BL_0/(self.cryogen.rho_V_sat*self.l*np.sqrt(2*self.z*self.d_i/2 - self.z**2))
         return v_z
 
     @property
@@ -618,7 +649,7 @@ class Tank:
                 return self.U_L * self.A_T * (self.T_air - self.cryogen.T_sat)
             else:
                 return self.Q_b_fixed
-        elif self.Geo_l == "spherical":
+        elif self.Geo_l == "spherical" or self.Geo_l == "horizontal cylinder":
             return 0
 
     @property
