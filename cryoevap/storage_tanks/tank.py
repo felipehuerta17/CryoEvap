@@ -127,6 +127,8 @@ class Tank:
         # Concatenate initial conditions in a single vector
         IC = np.append(VL_0, Tv_0)
 
+        self.vz0 = self.v_z
+
         # Integrate
         sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='RK45', atol=1e-6, rtol=1e-6) #change to RK45
 
@@ -236,30 +238,26 @@ class Tank:
 
 
         elif self.Geo_v == "spherical":
+            z = self.z_grid[1:-1]*L_dry + self.z
             #S_wall for a sphere
             S_wall = 2*self.U_V*(self.T_air - T[1:-1]) * (1-self.eta_w) / (self.cryogen.rho_V_avg * self.cryogen.cp_V_avg *
-                                                                           np.sqrt(abs(2*(self.l/2)*(self.z_grid[1:-1]*L_dry) - (self.z_grid[1:-1]*L_dry)**2)))
+                                                                           np.sqrt(abs(2*(self.l/2)*(z) - (z)**2)))
             #shape factor
             #shape = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry)) * (-self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
             #            + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*abs((self.z_grid[1:-1]*L_dry)**2 - 2*(self.z_grid[1:-1]*L_dry)*self.l/2))
             
             # shape factor conduction only
-            shape = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry)) * (
-                        + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*abs((self.z_grid[1:-1]*L_dry)**2 - 2*(self.z_grid[1:-1]*L_dry)*self.l/2))
+            # shape = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry)) * (
+            #             + self.cryogen.k_V_avg*dT_dz)/(self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*abs((self.z_grid[1:-1]*L_dry)**2 - 2*(self.z_grid[1:-1]*L_dry)*self.l/2))
 
-            # Debug prints
-            # numerator = 2*(abs(self.l/2 - self.z_grid[1:-1]*L_dry))
-            # print("numerator", numerator)
-
-            # convection_geom = -self.cryogen.rho_V_avg*self.cryogen.cp_V_avg*v_z*T[1:-1] 
-            # print("convection_geom", convection_geom)
-
-            # conduction_geom =  self.cryogen.k_V_avg*dT_dz
-            # print("conduction_geom", conduction_geom)
+            v_z = (self.v_z/self.z)*(z)*np.exp(-(z)*self.d_i/2)
             
-
+            r = np.sqrt(abs((z)*2*self.l/2 - (z)**2))
+            dr_dz = (self.d_i/2 - z)/np.sqrt(abs(2*(z)*self.d_i/2 - (z)**2))
+            
             #Update dT
-            dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + S_wall + shape
+            #dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + S_wall + shape
+            dT[1:-1] = alpha*d2T_dz2 - v_z*dT_dz/(r**2) + 2*dr_dz*alpha*dT_dz/r + S_wall
             #if any(dT<0):
             #    print(dT," ",alpha*d2T_dz2," ",(v_z-v_int)*dT_dz," ",S_wall," ",shape," ",t)
 
@@ -307,7 +305,7 @@ class Tank:
 
             return 1 /dH_LV * (self.Q_b + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw'])
         
-    def h_cylinder_vol(self,z,V):
+    def h_cylinder_vol(self,z):
             return [self.l*(((z-self.d_i/2)*np.sqrt(-z*(z-self.d_i)))/2 + np.arcsin((z-self.d_i/2)/(self.d_i/2))*(self.d_i/2)**2 +
                        ((self.d_i/2)**2)*np.pi/2) - self.LF*self.V]
         
@@ -422,6 +420,13 @@ class Tank:
                             'and thereafter run tank.plot_rhoVavg() again')
         plots.plot_rho_V_avg(self)
 
+    def plot_vz(self):
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_rhoVavg() again')
+        plots.plot_vz(self)
+
     def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
@@ -449,12 +454,14 @@ class Tank:
                 self.LF = self.sol.y[0][i]/self.V
                 l_L[i] = fsolve(self.h_cylinder_vol,[self.LF*self.d_i])[0]
 
+        vz_avg = []
+
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
             T_v = self.sol.y[1:, i]
 
             # Calculate and append Q_VL
-
+            
             # Update vapour thermal conductivity
             if self.Geo_v == "spherical" or self.Geo_v == "horizontal cylinder":
                 #h_grid = self.z_grid*(self.l-l_L[i])+l_L[i]
@@ -478,6 +485,11 @@ class Tank:
                 Tv_avg.append(simps(T_v, self.z_grid))
             else:
                 Tv_avg.append(simps(T_v*radius, self.z_grid)/simps(radius,self.z_grid))
+                zed = self.z_grid*(self.d_i-l_L[i]) + l_L[i]
+                vz = (self.vz0/l_L[i])*zed*np.exp(-(zed-l_L[i])*self.d_i/2)
+                vz_avg.append(simps(vz*radius, self.z_grid)/simps(radius,self.z_grid))
+            
+
             self.cryogen.update_rho_V(self.z_grid, T_v, radius)
 
             # Average vapour density
@@ -495,6 +507,7 @@ class Tank:
         self.data['Tv_avg'] = np.array(Tv_avg)
         self.data['rho_V_avg'] = rho_V_avg
         self.data['Q_VL'] = np.array(Q_VL)
+        self.data['vz_avg'] = np.array(vz_avg)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
