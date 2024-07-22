@@ -501,13 +501,15 @@ class Tank:
 
         # Vectorise
         self.data["z"] = l_L
-        self.data["A_T"] = np.pi*abs(2*l_L*self.l/2 - l_L**2) #sphere only
+        if self.Geo_l=='spherical':
+            self.data["A_T"] = np.pi*abs(2*l_L*self.l/2 - l_L**2) #sphere only
+            self.data['vz_avg'] = np.array(vz_avg)
         self.data['V_L'] = self.sol.y[0]
         self.data["LF"] = self.sol.y[0]/self.V
         self.data['Tv_avg'] = np.array(Tv_avg)
+        self.data['dTV_avg'] = self.dydt(self.sol.t,np.array(Tv_avg))
         self.data['rho_V_avg'] = rho_V_avg
         self.data['Q_VL'] = np.array(Q_VL)
-        self.data['vz_avg'] = np.array(vz_avg)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
@@ -663,7 +665,7 @@ class Tank:
             else:
                 return self.Q_b_fixed
         elif self.Geo_l == "spherical" or self.Geo_l == "horizontal cylinder":
-            return 0
+            return self.Q_b_fixed
 
     @property
     def tau(self):
