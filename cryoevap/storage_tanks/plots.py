@@ -245,8 +245,13 @@ def plot_vz(tank):
         # Get the temperature at this time step
         height = np.roots([-np.pi/3,np.pi*tank.l/2,0,-tank.sol.y[0][i*plot_step]])[1]
         tank.z = height
-        v_z = (tank.v_z/height)*(tank.z_grid*(tank.l-height)+height)*np.exp(-(tank.z_grid*(tank.l-height)+height-height)*tank.d_i/2)
-        
+
+        zed = tank.z_grid*(tank.l-height) + height
+
+        v_z = tank.v_z*(height/zed)*(2*tank.d_i/2 - height)/(2*tank.d_i/2 - zed)
+        for j, val in np.ndenumerate(zed):
+            if val>tank.d_i*0.98:
+                v_z[j[0]] = v_z[j[0]-1]
         # Plot the temperature profile at this time step, with color indicating the time
         ax.plot(v_z, tank.z_grid, color=cmap(norm(tank.sol.t[i * plot_step])))
 
