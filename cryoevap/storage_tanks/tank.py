@@ -256,7 +256,7 @@ class Tank:
         return self.cryogen.k_V_avg * self.A_T * dTdz_i
     
     # Plotting routines
-    def plot_tv(self):
+    def plot_tv(self, t_unit='s'):
         '''
         Plots vapour temperature profile after running a solution
         '''
@@ -267,10 +267,10 @@ class Tank:
                             'and thereafter run tank.plot_tv() again')  
 
         # Produce vapour temperature plot
-        plots.plot_tv(self)
+        plots.plot_tv(self, t_unit)
         return
     
-    def plot_V_L(self, unit='m3'):
+    def plot_V_L(self, unit='m3', t_unit='s'):
         '''
         Plots liquid volume as a function of time
 
@@ -287,9 +287,9 @@ class Tank:
                             'and thereafter run tank.plot_V_L() again')  
 
         # Produce liquid volume plot
-        plots.plot_V_L(self, unit)
+        plots.plot_V_L(self, unit, t_unit)
     
-    def plot_BOG(self, unit='kg/h'):
+    def plot_BOG(self, unit='kg/h', t_unit='s'):
         '''
         Plots boil off gas rate as a function of time
 
@@ -305,9 +305,9 @@ class Tank:
                             'and thereafter run tank.plot_BOG() again')  
 
         # Produce liquid volume plot
-        plots.plot_BOG(self, unit)
+        plots.plot_BOG(self, unit, t_unit)
     
-    def plot_Q(self, unit='kW'):
+    def plot_Q(self, unit='kW', t_unit='s'):
         '''
         Plots vapour to liquid heat transfer rate
 
@@ -324,18 +324,21 @@ class Tank:
                             'and thereafter run tank.plot_QVL() again') 
         
         # Produce liquid volume plot
-        plots.plot_Q(self, unit)
+        plots.plot_Q(self, unit, t_unit)
 
     
     def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
         to liquid heat transfer rate (Q_VL), the liquid heat ingress
-        (Q_Lin) and the vapour heat ingress (Q_V)
+        (Q_Lin), bottom heat ingress and the vapour heat ingress (Q_V).
+
+        It also reconstructs local variables of interest, such as T_BOG.
         '''  
         Q_VL = []
         Tv_avg = []
         rho_V_avg = []
+        T_BOG = []
 
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
@@ -353,7 +356,7 @@ class Tank:
             self.cryogen.update_k_V(self.z_grid, T_v)
             
             # Calculate vapour temperature gradient from the vapour length
-            # at the desired tiemstep
+            # at the desired timestep
             dz = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
             dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)    
             
@@ -366,6 +369,9 @@ class Tank:
             # Average vapour density
             self.cryogen.update_rho_V(self.z_grid, T_v)
             rho_V_avg.append(self.cryogen.rho_V_avg)
+
+            # BOG temperature
+            T_BOG.append(T_v[-1])
         
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
@@ -376,6 +382,7 @@ class Tank:
         self.data['Tv_avg'] = np.array(Tv_avg)
         self.data['rho_V_avg'] = rho_V_avg
         self.data['Q_VL'] = np.array(Q_VL)
+        self.data['T_BOG'] = np.array(T_BOG)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
@@ -389,6 +396,7 @@ class Tank:
         self.data['Q_L'] = np.array(Q_L)
         self.data['Q_V'] = np.array(Q_V)
         self.data['Q_Vw'] = np.array(Q_V) * self.eta_w
+        self.data['Q_tot'] = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  + self.Q_b
 
         # Evaporation rate in kg/s
         self.data['B_L'] = self.evap_rate()
@@ -403,6 +411,8 @@ class Tank:
         self.data['BOG'] = (self.data['B_L']
             + self.data['rho_V_avg'] * self.data['dV_L']
             - (self.V - self.data['V_L']) * self.data['drho_V_avg'])
+        
+
         return
     
     def dydt(self, t, y):
