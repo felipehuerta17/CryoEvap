@@ -533,3 +533,4 @@ class Tank:
         duration of the transient period
         of rapid vapour heating'''
         return 2 * self.l_V/self.v_z
+        return 2*self.l_V/self.v_z
