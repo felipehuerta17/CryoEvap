@@ -148,7 +148,7 @@ class Tank:
 
         if self.Geo_l == "spherical":
             self.z = np.roots([-np.pi/3,np.pi*self.l/2,0,-self.V*self.LF])[1]
-            assert(self.z<self.l and self.z>=0 and isinstance(self.z,float))
+            assert(self.z<self.d_i and self.z>=0 and isinstance(self.z,float))
             self.A_T = abs(np.pi*(2*self.l/2 * self.z - self.z**2))
 
         # Computes total heat ingress to the liquid
@@ -179,7 +179,6 @@ class Tank:
         # Update average vapour temperature using Simpson's rule
         if self.Geo_v == "spherical":
             h_grid = self.z_grid*(L_dry)+self.z - (self.z_grid[1]-self.z_grid[0])*L_dry/2
-            #h_grid = self.z_grid*(L_dry)+self.z
             radius = np.sqrt(abs(2*h_grid*self.l/2 - h_grid**2))
             self.cryogen.Tv_avg = simps(T*radius, self.z_grid)/simps(radius,self.z_grid)
         elif self.Geo_v == "cylindrical":
@@ -505,7 +504,7 @@ class Tank:
 
         # The driving force of Q_V is the average temperature
         if self.Geo_v == "cylindrical" and self.Geo_l == "cylindrical":
-            Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
+            Q_L = self.U_L * (np.pi * self.d_o * l_L + np.pi*self.d_i**2 / 4) * (self.T_air - self.cryogen.T_sat)
             Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L) + np.pi*self.d_o**2 / 4) *( self.T_air - self.data['Tv_avg'])
         elif self.Geo_v == "spherical" and self.Geo_l == "spherical":
             Q_L = self.U_L * (np.pi * self.d_o * (l_L + (self.d_o-self.d_i)/2)) * (self.T_air - self.cryogen.T_sat)

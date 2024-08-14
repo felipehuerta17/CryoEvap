@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 
+from matplotlib.ticker import FormatStrFormatter
+
 import numpy as np
 
 def plot_tv(tank):
@@ -39,7 +41,7 @@ def plot_tv(tank):
     ax.set_xlabel('Temperature / K')
 
     # Add a title
-    ax.set_title('Vapour temperature profiles at different times')
+    ax.set_title('Vapour temperature profiles at different times - '+tank.Geo_v+' geometry')
 
     # Show the plot
     # plt.show()
@@ -71,6 +73,7 @@ def plot_V_L(tank, unit='m3'):
         plt.ylabel('$V_L$ / $m^3$')
     else:
         plt.ylabel('$V_L$ / ' + unit)
+    plt.title('Liquid volume over time - '+tank.Geo_l+' geometry')
     plt.show()
     return
 
@@ -101,6 +104,7 @@ def plot_BOG(tank, unit='kg/h'):
     plt.grid()
     plt.xlabel('Time / s')
     plt.ylabel('Mass flow $/$ ' + unit)
+    plt.title('BOG and evaporation rates over time - '+tank.Geo_l+' geometry')
     plt.legend()
     plt.show()
     return
@@ -158,7 +162,7 @@ def plot_Q(tank, unit='kW'):
     ax[1][1].set_xlabel("Time / s")
     ax[1][1].grid()
 
-    ax[0][0].set_title("Heat ingresses")
+    ax[0][0].set_title('Heat ingresses - '+tank.Geo_l+' geometry')
 
     # [axis.grid() for axis in ax]
     plt.show()
@@ -175,6 +179,7 @@ def plot_l_L(tank):
     plt.grid()
     plt.xlabel('Time / s')
     plt.ylabel('$l_L$ / $m$')
+    plt.title('Liquid length over time - '+tank.Geo_l+' geometry')
     plt.show()
     return
 
@@ -204,6 +209,7 @@ def plot_LF(tank):
     plt.plot(tank.sol.t, tank.data["LF"], color = cmap(1/6))
     plt.grid()
     plt.xlabel('Time / s')
+    plt.title('Percent liquid filling over time - '+tank.Geo_l+' geometry')
     plt.ylabel('$LF$')
     plt.show()
     return
@@ -219,7 +225,8 @@ def plot_rho_V_avg(tank):
     plt.plot(tank.sol.t, tank.data["rho_V_avg"], color = cmap(1/6))
     plt.grid()
     plt.xlabel('Time / s')
-    plt.ylabel('$rho$')
+    plt.ylabel(r'$\rho$ / kg/$m^3$')
+    plt.title('Average vapour density over time - '+tank.Geo_v+' geometry')
     plt.show()
     return
 
@@ -249,11 +256,14 @@ def plot_vz(tank):
         zed = tank.z_grid*(tank.l-height) + height
 
         v_z = tank.v_z*(height/zed)*(2*tank.d_i/2 - height)/(2*tank.d_i/2 - zed)
+        #end = len(zed) - len(np.where(zed>tank.d_i*0.98)) - 1
         for j, val in np.ndenumerate(zed):
             if val>tank.d_i*0.98:
                 v_z[j[0]] = v_z[j[0]-1]
         # Plot the temperature profile at this time step, with color indicating the time
-        ax.plot(v_z, tank.z_grid, color=cmap(norm(tank.sol.t[i * plot_step])))
+        zed = np.insert(zed,0,0)
+        v_z = np.insert(v_z,0,v_z[0])
+        ax.plot(v_z, zed, color=cmap(norm(tank.sol.t[i * plot_step])))
 
         # Add a text box with the time value at the right of the plot
         ax.text(1.02, ((i-1 + 0.15)*plot_step) / len(tank.sol.t), f't={tank.sol.t[i*plot_step]:.0f} s', transform=ax.transAxes, 
@@ -263,8 +273,11 @@ def plot_vz(tank):
     ax.grid(True)
 
     # Add labels
-    ax.set_ylabel(r'Dimensionless length $\zeta = z/l_V$')
+    ax.set_ylabel('Tank Length / m')
     ax.set_xlabel('Velocity / m/s')
+    ax.set_ylim(0,0.985*tank.d_i)
+
+    ax.xaxis.set_major_formatter(FormatStrFormatter('% 1.1e'))
 
     # Add a title
     ax.set_title('Velocity profiles at different times')
