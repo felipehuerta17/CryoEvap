@@ -532,4 +532,4 @@ class Tank:
         '''Provides a conservative estimate of the 
         duration of the transient period
         of rapid vapour heating'''
-        return self.l_V/self.v_z
+        return 2*self.l_V/self.v_z
