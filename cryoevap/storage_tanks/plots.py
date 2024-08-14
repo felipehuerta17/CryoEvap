@@ -174,3 +174,30 @@ def plot_Q(tank, unit='kW', t_unit = 's'):
     # [axis.grid() for axis in ax]
     plt.show()
 
+def plot_tv_BOG(tank, t_unit = 's'):
+    '''
+    Plots average vapour temperature and boil-off gas
+    temperature as a function of time
+
+    Inputs:
+        tank: Tank object with a sol object produced by the 
+        evaporate() function
+        t_unit: Time units. Default: s.
+        Options: s, min, h, days.
+    
+    Returns:
+        None:
+    '''
+
+    # Time unit conversion factor for plotting
+    t_dict = {'s':1, 'min': 60, 'h':3600, 'd': 3600*24, 'w': 3600*24*7}
+
+    # Ad-hoc plotting of average and boil-off gas temperature
+    plt.figure(figsize=[4,4])
+    plt.plot(tank.data['Time']/t_dict[t_unit], tank.data['Tv_avg'], label=r'$\overline{T}_V$')
+    plt.plot(tank.data['Time']/t_dict[t_unit], tank.data['T_BOG'], label=r'$T_{BOG}$')
+    plt.xlabel("Time / " + t_unit)
+    plt.ylabel('Temperature / K')
+    plt.legend()
+    plt.grid()
+

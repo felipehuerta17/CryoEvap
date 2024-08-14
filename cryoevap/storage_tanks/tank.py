@@ -325,6 +325,25 @@ class Tank:
         
         # Produce liquid volume plot
         plots.plot_Q(self, unit, t_unit)
+    
+    def plot_tv_BOG(self, t_unit='s'):
+        '''
+        Plots average vapour temperature and boil-off gas temperature
+        as a function of time
+
+        Inputs:
+            t_unit(string): Time units among 's', 'min', 'h', 'd', 'w'.
+        Returns:
+            None
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_BOG() again')  
+
+        # Produce liquid volume plot
+        plots.plot_tv_BOG(self, t_unit)
 
     
     def _reconstruct(self):
