@@ -68,9 +68,10 @@ class Tank:
         self.Q_roof = Q_roof  
         self.T_air = T_air 
 
-        # The walls and roof materials are the same, hence, it is assumed
-        # that their heat transfer coefficients are the same
+        # The walls, roof and bottom materials and thicknesses are assumed to be same.
+        #  If not specified, it is assumed that their heat transfer coefficients are the same.
         self.U_roof = U_V         
+        self.U_b = U_L
 
         # By default, the roof is thermally insulated
         self.roof_BC = "Neumann"  
@@ -523,7 +524,7 @@ class Tank:
     def Q_b(self):
         if self.Q_b_fixed is None:
             "If Q_b_fixed is not set, calculate"
-            return self.U_L * self.A_T * (self.T_air - self.cryogen.T_sat)
+            return self.U_b * self.A_T * (self.T_air - self.cryogen.T_sat)
         else:
             return self.Q_b_fixed
     
