@@ -50,7 +50,7 @@ class Tank:
                     'drho_V_avg': [], 'dV_L': []}
         pass
 
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0):
+    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = None):
         """Set separately tank heat transfer properties
         
         Inputs:
@@ -80,8 +80,17 @@ class Tank:
         # electric element at a constant rate to prevent ground freezing. 
         self.Q_b_fixed = Q_b_fixed 
 
-        # Wall heat partitioning fraction
-        self.eta_w = eta_w         
+        # Set wall heat partitioning
+        # Automatic wall heat partitioning fraction if None
+        if eta_w is None:
+            if self.V <= 10:
+                self.eta_w = 0.97
+            elif self.V > 10 and self.V <=10000:
+                self.eta_w = 0.8
+            else:
+                self.eta_w = 0.7
+        else:
+            self.eta_w = eta_w         
 
         pass
 
