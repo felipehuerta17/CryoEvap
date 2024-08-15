@@ -75,6 +75,8 @@ def plot_V_L(tank, unit='m3', t_unit='s'):
         plt.ylabel('$V_L$ / $m^3$')
     else:
         plt.ylabel('$V_L$ / ' + unit)
+    
+    plt.show()
     return
 
 def plot_BOG(tank, unit='kg/h', t_unit = 's'):
