@@ -245,7 +245,7 @@ class Tank:
             dr_dz = (self.d_i/2 - z)/np.sqrt(abs(2*(z)*self.d_i/2 - (z)**2))
             
             #Update dT
-            dT[1:-1] = alpha*d2T_dz2 - v_z*dT_dz/(r**2) + 2*dr_dz*alpha*dT_dz/r + S_wall
+            dT[1:-1] = alpha*d2T_dz2 - v_z*dT_dz + 2*dr_dz*alpha*dT_dz/r + S_wall
 
 
         # DIFFERENTIAL BOUNDARY CONDITIONS
