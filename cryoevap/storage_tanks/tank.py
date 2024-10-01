@@ -9,7 +9,7 @@ import CoolProp.CoolProp as CP
 from scipy.integrate import solve_ivp
 
 # Simpson's rule for integration with 2nd order accuracy
-from scipy.integrate import simps
+from scipy.integrate import simpson
 
 # Linear interpolant to reconstruct solutions
 from scipy.interpolate import interp1d
@@ -166,7 +166,7 @@ class Tank:
         L_dry = self.l*(1-self.LF) # Dry height of the tank
         
         # Update average vapour temperature using Simpson's rule
-        self.cryogen.Tv_avg = simps(T, self.z_grid)
+        self.cryogen.Tv_avg = simpson(T, x = self.z_grid)
 
         # Update vapour temperature
         self.cryogen.T_V = T
@@ -393,7 +393,7 @@ class Tank:
             Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
 
             # Average vapour temperature
-            Tv_avg.append(simps(T_v, self.z_grid))
+            Tv_avg.append(simpson(T_v, x = self.z_grid))
 
             # Average vapour density
             self.cryogen.update_rho_V(self.z_grid, T_v)
