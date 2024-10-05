@@ -2,7 +2,7 @@
 import CoolProp.CoolProp as CP
 
 # Simpson's rule for integration with 2nd order accuracy
-from scipy.integrate import simps
+from scipy.integrate import simpson
 
 # Check potential nans
 import numpy as np
@@ -112,7 +112,7 @@ class Cryogen:
             return
         
         # Compute average density on a unit-length grid
-        self.rho_V_avg =  simps(rho_V, z_grid)
+        self.rho_V_avg =  simpson(rho_V, z_grid)
         return
     
     def update_k_V(self, z_grid, T_V):
@@ -138,7 +138,7 @@ class Cryogen:
             return
 
         # Update average vapour density
-        self.k_V_avg = simps(k_V, z_grid)
+        self.k_V_avg = simpson(k_V, z_grid)
     
     def update_cp_V(self, z_grid, T_V):
         '''
@@ -162,5 +162,5 @@ class Cryogen:
         # Update average vapour density if calling CoolProp was successful
         if np.any(np.isnan(cp_V)) or np.any(np.isinf(cp_V)):
             return
-        self.cp_V_avg = simps(cp_V, z_grid)
+        self.cp_V_avg = simpson(cp_V, z_grid)
 
