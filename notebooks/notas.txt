@@ -1,0 +1,31 @@
+Hidrogeno
+- techo aislado tiempo simulacion 24h
+    valores de U 3.73e-3 optimo 9.494e-01
+    valores de U 3.73e-2 optimo 9.474e-01
+    valores de U 1e-1 optimo 9.490e-01
+    valores de U 5e-1 optimo 9.498e-01
+- techo aislado tiempo simulacion 48h
+    valores de U 3.73e-3 optimo 9.494e-01
+    valores de U 3.73e-2 optimo 9.487e-01
+
+Hidrogeno
+- techo_U = U_V tiempo simulacion 24h
+    valores de U 3.73e-3 optimo 9.472e-01
+    valores de U 1e-1 optimo 9.500e-01
+    valores de U 5e-1 optimo 9.500e-01
+- techo_U = U_V tiempo simulacion 96h
+    Valores U 2e-2 optimo 9.498e-01
+    Valores U 2e-1 optimo 9.498e-01
+Metano
+- techo_U = U_V tiempo simulacion 24h
+    valores de U 2e-1 optimo 9.478e-01
+    valores de U 5e-1 optimo 9.489e-01
+Nitrogeno
+- techo_U = U_V tiempo simulacion 24h
+    valores de U 2.6e-2 optimo 9.491e-01
+    valores de U 2.6e-1 optimo 4.750e-01
+    valores de U 5e-1 optimo 4.901e-01
+- techo_U = U_V tiempo simulacion 48h
+    valores de U 2.6e-2 optimo 9.476e-01
+    valores de U 2.6e-1 optimo 9.484e-01
+    valores de U 5e-1 optimo 
