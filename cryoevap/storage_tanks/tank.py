@@ -27,8 +27,8 @@ class Tank:
         self.d_i = d_i  # [m] Tank internal diameter
         self.d_o = d_o  # [m] Tank external diameter
         self.V = V  # [m^3] Tank volume
-        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
-        self.l = V / self.A_T  # [m] Tank height
+        # self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
+        # self.l = V / self.A_T  # [m] Tank height
         self.LF = LF # Initial liquid filling
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
 
@@ -539,7 +539,15 @@ class Tank:
     
     @property
     def tau(self):
-        '''Provides a conservative estimate of the 
-        duration of the transient period
-        of rapid vapour heating'''
+        '''Provides an estimate of the 
+        the transient period of rapid vapour heating'''
         return 2*self.l_V/self.v_z
+
+    @property
+    def A_T(self):
+        return np.pi * self.d_i ** 2 / 4  # [m^2] cross section area
+    
+    @property
+    def l(self):
+        return self.V / self.A_T  # [m] Tank height
+    
