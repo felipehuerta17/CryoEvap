@@ -32,7 +32,10 @@ class Tank:
         self.LF = LF # Initial liquid filling
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
 
+
         # Simulation control
+        # Simulation time to assess changes in ambient temperature
+        self.t = 0
 
         # Initialise dimensionless grid with 100 nodes as default
         self.z_grid = np.linspace(0, 1, 100)
@@ -50,7 +53,7 @@ class Tank:
                     'drho_V_avg': [], 'dV_L': []}
         pass
 
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0):
+    def set_HeatTransProps(self, U_L, U_V, T_air_coeffs, Q_b_fixed=None, Q_roof=0, eta_w = 0):
         """Set separately tank heat transfer properties
         
         Inputs:
@@ -66,7 +69,10 @@ class Tank:
         self.U_L = U_L  
         self.U_V = U_V 
         self.Q_roof = Q_roof  
-        self.T_air = T_air 
+        
+        #self.T_air = T_air 
+        # Coefficients of an 3rd order polynomial
+        self.T_air_coeffs = np.array(T_air_coeffs)
 
         # The walls and roof materials are the same, hence, it is assumed
         # that their heat transfer coefficients are the same
@@ -220,6 +226,11 @@ class Tank:
         '''
         Constructs liquid volume + vapour temperature subsystem
         '''
+
+        # Update tank simulation time to evaluate
+        # ambient temperature
+        self.t = t
+
         # Liquid volume derivative
         # dV = self.sys_liq_volume(self, t, y[0])
         dV = self.sys_liq_volume(t, y[0])
@@ -533,3 +544,12 @@ class Tank:
         duration of the transient period
         of rapid vapour heating'''
         return self.l_V/self.v_z
+    
+    @property
+    def T_air(self):
+        '''Gives the temperature of the surroundings
+        as a function of user defined parameters
+        '''
+        p = self.T_air_coeffs
+        return p[0] + p[1]*self.t + p[2]*self.t + p[3]*self.t
+
