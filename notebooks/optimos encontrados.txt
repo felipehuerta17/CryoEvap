@@ -1,0 +1,90 @@
+Simulacion 24h Caso 2:
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 95.0%, Compound: hydrogen
+Aspect Ratio = 1.218
+BOR = 0.110 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 30.0%, Compound: hydrogen
+Aspect Ratio = 1.518
+BOR = 0.300 %
+
+Simulacion 24h Caso 3:
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 95.0%, Compound: hydrogen
+Aspect Ratio = 1.195
+BOR = 0.168 %
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 30.0%, Compound: hydrogen
+Aspect Ratio = 1.492
+BOR = 0.459 %
+
+
+
+
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 95.0%, Compound: methane
+Aspect Ratio = 1.796
+BOR = 0.019 %
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 30.0%, Compound: methane
+Aspect Ratio = 2.256
+BOR = 0.051 %
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 95.0%, Compound: ammonia
+Aspect Ratio = 5.990
+BOR = 0.002 %
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 30.0%, Compound: ammonia
+Aspect Ratio = 7.692
+BOR = 0.005 %
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 95.0%, Compound: nitrogen
+Aspect Ratio = 1.512
+BOR = 0.028 %
+
+Optimum found for Tank Volume: 165000, Liquid Filling: 30.0%, Compound: nitrogen
+Aspect Ratio = 1.893
+BOR = 0.078 %
+
+
+Simulacion 24h Caso 1:
+
+Optimum found for Tank Volume: 0.007, Liquid Filling: 30.0%, Compound: nitrogen
+Aspect Ratio = 2.532
+BOR = 19.208 %
+
+
+
+Simulacion 24h Caso 2:
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 95.0%, Compound: hydrogen
+Aspect Ratio = 1.218
+BOR = 0.110 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 30.0%, Compound: hydrogen
+Aspect Ratio = 1.518
+BOR = 0.300 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 95.0%, Compound: methane
+Aspect Ratio = 1.882
+BOR = 0.012 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 30.0%, Compound: methane
+Aspect Ratio = 2.294
+BOR = 0.034 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 95.0%, Compound: ammonia
+Aspect Ratio = 6.108
+BOR = 0.001 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 30.0%, Compound: ammonia
+Aspect Ratio = 7.754
+BOR = 0.003 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 95.0%, Compound: nitrogen
+Aspect Ratio = 1.553
+BOR = 0.019 %
+
+Optimum found for Tank Volume: 2033, Liquid Filling: 30.0%, Compound: nitrogen
+Aspect Ratio = 1.924
+BOR = 0.051 %
