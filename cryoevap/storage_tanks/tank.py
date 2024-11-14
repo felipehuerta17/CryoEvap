@@ -231,6 +231,7 @@ class Tank:
         # ambient temperature
         self.t = t
 
+
         # Liquid volume derivative
         # dV = self.sys_liq_volume(self, t, y[0])
         dV = self.sys_liq_volume(t, y[0])
@@ -550,6 +551,11 @@ class Tank:
         '''Gives the temperature of the surroundings
         as a function of user defined parameters
         '''
+
+        # Time with units
+        t = self.t/86400 # d
         p = self.T_air_coeffs
-        return p[0] + p[1]*self.t + p[2]*self.t + p[3]*self.t
+        T_a = p[0] + p[1]*t + p[2]*t**2 + p[3]*t**3
+        print("t = %.0f d,T_a = %.3f K" % (t, T_a))
+        return T_a
 
