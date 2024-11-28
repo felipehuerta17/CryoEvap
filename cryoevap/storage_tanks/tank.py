@@ -31,7 +31,7 @@ class Tank:
         self.l = V / self.A_T  # [m] Tank height
         self.LF = LF # Initial liquid filling
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
-
+        self.temp_air_period = 86400 # Time period in s of air temperature polynomial
 
         # Simulation control
         # Simulation time to assess changes in ambient temperature
@@ -59,7 +59,7 @@ class Tank:
         Inputs:
             U_L: liquid phase overall heat transfer coefficient / W m^-2 K ^-1
             U_V: vapour phase overall heat transfer coefficient / W m^-2 K ^-1
-            T_air: Temperature of the surroundings / K
+            T_air_coeffs: Coefficients of temperature as a function of time in h/ K
             Q_b_fixed: Fixed bottom heat ingress if specified 
         
         Returns:
@@ -549,13 +549,16 @@ class Tank:
     @property
     def T_air(self):
         '''Gives the temperature of the surroundings
-        as a function of user defined parameters
-        '''
+        as a function of user defined parameters for
+        T_air(t)
 
+        t is the time in days
+
+        '''
         # Time with units
-        t = self.t/86400 # d
+        t = self.t/self.temp_air_period # d
         p = self.T_air_coeffs
-        T_a = p[0] + p[1]*t + p[2]*t**2 + p[3]*t**3
-        print("t = %.0f d,T_a = %.3f K" % (t, T_a))
+        T_a = p[0] + p[1]*t + p[2]*t**2 + p[3]*t**3 + p[4]*t**4 + p[5]*t**5 + p[6]*t**6
+        # print("t = %.0f d,T_a = %.3f K" % (t, T_a))
         return T_a
 
