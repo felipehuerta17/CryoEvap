@@ -95,3 +95,4 @@ ENV/
 # Output data files
 *.csv
 *.png
+*.svg
