@@ -370,6 +370,7 @@ class Tank:
         Tv_avg = []
         rho_V_avg = []
         T_BOG = []
+        T_air = []
 
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
@@ -403,11 +404,15 @@ class Tank:
 
             # BOG temperature
             T_BOG.append(T_v[-1])
+
+            # Air temperature
+            self.t = self.sol.t[i]
+            T_air.append(self.T_air)
         
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
         rho_V_avg = np.array(rho_V_avg)
-
+        
         # Vectorise
         self.data['V_L'] = self.sol.y[0]
         self.data['Tv_avg'] = np.array(Tv_avg)
@@ -415,13 +420,18 @@ class Tank:
         self.data['Q_VL'] = np.array(Q_VL)
         self.data['T_BOG'] = np.array(T_BOG)
 
+        # The air temperature as a numpy array is required for calculations
+        T_air = np.array(T_air)
+        self.data['T_air'] = T_air
+
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
         # but reconstructed from the liquid volume
-        Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
+        print(self.T_air)
+        Q_L = self.U_L * (np.pi * self.d_o * l_L) * (T_air - self.cryogen.T_sat)
 
         # The driving force of Q_V is the average temperature
-        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
+        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *(T_air - self.data['Tv_avg'])
         
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
