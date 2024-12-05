@@ -482,6 +482,17 @@ class Tank:
         linear_interp = interp1d(t[1:], y[1:],
                                   kind='linear', fill_value='extrapolate')
         return linear_interp(t_int)
+    
+    def BOR(self):
+        '''
+        Calculates boil-off rate as the ratio of
+        the initial volume evaporated every day
+        of storage
+
+        Returns: BOR: percentage of the
+        '''
+        BOR = (1 - self.data['V_L'][-1]/self.data['V_L'][0])* (86400/self.data['Time'][-1])
+        return BOR
 
 
 
