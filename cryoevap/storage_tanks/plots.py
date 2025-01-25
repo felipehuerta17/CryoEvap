@@ -39,11 +39,6 @@ def plot_tv(tank, t_unit='s'):
     ax.set_ylabel(r'Dimensionless length $\zeta = z/l_V$')
     ax.set_xlabel('Temperature / K')
 
-    # Add a title
-    # ax.set_title('Vapour temperature profiles at different times')
-
-    # Show the plot
-    # plt.show()
 
 def plot_V_L(tank, unit='m3', t_unit='s'):
     '''
@@ -103,13 +98,13 @@ def plot_BOG(tank, unit='kg/h', t_unit = 's'):
     # Extract evaporation and BOG rates and convert to kg/h
     # Visualise evaporation and boil-off gas rate in kg/h
 
+    plt.figure(figsize=[4,4])
     plt.plot(tank.sol.t/t_dict[t_unit], tank.data['B_L'] * unit_conv[unit], label='Evaporation rate, $\dot{B}_L$', color = cmap(1/6))
     plt.plot(tank.sol.t[1:]/t_dict[t_unit], tank.data['BOG'][1:] * unit_conv[unit], label='Boil-off gas rate, $\dot{B}$', color = cmap(5/6)) 
     plt.grid()
     plt.xlabel('Time / ' + t_unit)
     plt.ylabel('Mass flow $/$ ' + unit)
     plt.legend()
-    plt.show()
     return
 
 def plot_Q(tank, unit='kW', t_unit = 's'):
@@ -172,7 +167,7 @@ def plot_Q(tank, unit='kW', t_unit = 's'):
     # ax[0][0].set_title("Heat ingresses")
 
     # [axis.grid() for axis in ax]
-    plt.show()
+
 
 def plot_tv_BOG(tank, t_unit = 's'):
     '''
