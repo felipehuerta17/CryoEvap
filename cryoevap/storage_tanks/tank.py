@@ -24,18 +24,19 @@ class Tank:
     def __init__(self, d_i, d_o, V, LF=0.97):
         """ Class constructor """
         # Compulsory parameters
-        self.d_i = d_i  # [m] Tank internal diameter
-        self.d_o = d_o  # [m] Tank external diameter
-        self.V = V  # [m^3] Tank volume
-        self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
-        self.l = V / self.A_T  # [m] Tank height
-        self.LF = LF # Initial liquid filling
-        self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
+        self.d_i     = d_i                   # [m] Tank internal diameter
+        self.d_o     = d_o                   # [m] Tank external diameter
+        self.V       = V                     # [m^3] Tank volume
+        self.A_T     = np.pi * d_i ** 2 / 4  # [m^2] cross section area
+        self.l       = V / self.A_T          # [m] Tank height
+        self.LF      = LF                    # Initial liquid filling
+        self.cryogen = Cryogen()             # Empty Cryogen, see Cryogen class
 
         # Simulation control
 
         # Initialise dimensionless grid with 100 nodes as default
         self.z_grid = np.linspace(0, 1, 100)
+        self.r_grid = np.linspace(0, 1, 3)
 
         # Solution object
         self.sol = None
@@ -47,26 +48,91 @@ class Tank:
         self.data = {'Time':[], 'Tv_avg': [], 'rho_V_avg': [],
                     'Q_VL': [],'Q_L': [], 'Q_V': [],
                     'V_L': [], 'B_L': [], 'BOG': [],
-                    'drho_V_avg': [], 'dV_L': []}
+                    'drho_V_avg': [], 'dV_L': [], 'Tw_avg': [],
+                    'Q_Wenv':[], 'Q_LW':[]}
+        
+
         pass
 
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0):
+    def set_EnvironmentalProps(self, T_avg_day = None, T_range_day = None, freq_day = 2*np.pi/(24*3600), h_env = 15,
+                               T_avg_annual = None, T_range_annual = None, freq_annual = 2*np.pi/(365*24*3600)):
+        """Set separately environmental temperature and properties
+
+        If you want to set the environmental temperature for the day, set T_avg_day, T_range_day and freq_day
+        If you want to set the environmental temperature for the annual period, set T_avg_annual, T_range_annual and freq_annual
+        If you want to set both, set all the parameters except T_avg_day (T_range_day, freq_day, T_avg_annual, T_range_annual, freq_annual)
+
+        Inputs:
+            T_avg_day   : average environmental temperature / K
+            T_range_day : range of temperature during the period (T_max - T_min) / K
+            freq_day    : frecuency of the temperature between the maximum and minimum temperature / Hz
+            h_env       : convective heat transfer coefficient / W/m^2K
+            T_avg_annual: average environmental temperature / K
+            T_range_annual: range of temperature during the period (T_max - T_min) / K
+            freq_annual : frecuency of the temperature between the maximum and minimum temperature / Hz       
+        Returns:
+            None
+        """ 
+        # Set environmental temperature properties for the day
+        self.T_env_avg_day = T_avg_day      # [K]
+        self.range_env_day = T_range_day    # [K]
+        self.freq_env_day  = freq_day       # [Hz]
+        self.T_air_day     = T_avg_day      # [K]
+        self.h_env         = h_env      # [W/m^2K]
+
+        # Set environmental temperature properties for the annual period
+        self.T_env_avg_annual = T_avg_annual
+        self.range_env_annual = T_range_annual
+        self.freq_env_annual  = freq_annual
+
+        # Case 1: Just day temperature is set
+        if T_avg_annual is None:
+            self.T_env = lambda t: self.T_env_avg_day + 0.5*self.range_env_day*np.sin(self.freq_env_day*t)
+
+        # Case 2: Just annual temperature is set
+        elif T_range_day is None:
+            self.T_env = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t)
+        
+        # Case 3: Both day and annual temperatures are set
+        else:
+            self.T_env = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t) + \
+                                   0.5*self.range_env_day*np.sin(self.freq_env_day*t)  
+        pass
+
+    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True):  
         """Set separately tank heat transfer properties
         
         Inputs:
-            U_L: liquid phase overall heat transfer coefficient / W m^-2 K ^-1
-            U_V: vapour phase overall heat transfer coefficient / W m^-2 K ^-1
-            T_air: Temperature of the surroundings / K
-            Q_b_fixed: Fixed bottom heat ingress if specified 
+            U_L       : liquid phase overall heat transfer coefficient / W m^-2 K ^-1
+            U_V       : vapour phase overall heat transfer coefficient / W m^-2 K ^-1
+            T_air     : Temperature of the surroundings / K
+            Q_b_fixed : Fixed bottom heat ingress if specified 
+            Q_roof    : Heat ingress through the roof / W
+            eta_w     : Wall heat partitioning fraction
+            k_w       : Wall thermal conductivity / W m^-1 K^-1
+            rho_w     : Wall density / kg m^-3
+            cp_w      : Wall specific heat capacity / J kg^-1 K^-1
+            h_L       : Liquid phase heat transfer coefficient / W m^-2 K^-1
+            T_init    : Set initial wall temperature as environmental temperature / True or False
         
         Returns:
             None
         """
         # Tank parameters
-        self.U_L = U_L  
-        self.U_V = U_V 
-        self.Q_roof = Q_roof  
-        self.T_air = T_air 
+        self.U_L     = U_L  
+        self.U_V     = U_V 
+        self.Q_roof  = Q_roof  
+        self.T_air   = T_air  
+        self.H_L     = h_L
+
+        # Wall properties
+        self.k_w     = k_w
+        self.rho_w   = rho_w
+        self.cp_w    = cp_w
+        self.alpha_w = k_w/(rho_w*cp_w)
+
+        # Environmental property
+        self.h_env = 0
 
         # The walls and roof materials are the same, hence, it is assumed
         # that their heat transfer coefficients are the same
@@ -80,7 +146,16 @@ class Tank:
         self.Q_b_fixed = Q_b_fixed 
 
         # Wall heat partitioning fraction
-        self.eta_w = eta_w         
+        self.eta_w = eta_w   
+
+        # Set initial wall temperature
+        if T_init:
+            self.Init_wall_T = self.T_air
+        else:
+            self.Init_wall_T = self.cryogen.T_sat      
+
+        # Define T_env as constant by default
+        self.T_env = lambda t: self.T_air
 
         pass
 
@@ -107,11 +182,14 @@ class Tank:
         dz = self.z_grid[1] - self.z_grid[0]
 
         # Robin BC initial condition
-        Tv_0[-1] = ((2 * self.U_roof * (1-self.eta_w) * dz * self.T_air/self.cryogen.k_V_avg +
+        Tv_0[-1] = ((2 * self.U_roof * (1-self.eta_w) * dz * self.T_env(0)/self.cryogen.k_V_avg +
                     4 * Tv_0[-2] - Tv_0[-3])/(3 + 2 * self.U_roof * (1-self.eta_w) * dz * self.cryogen.k_V_avg))
 
+        # Initial wall temperature
+        Tw_0 = np.ones(len(self.r_grid)) * self.Init_wall_T
+
         # Concatenate initial conditions in a single vector
-        IC = np.append(VL_0, Tv_0)
+        IC = np.concatenate([[VL_0], Tv_0, Tw_0])
 
         # Integrate
         sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='RK45', atol=1e-6, rtol=1e-6)        
@@ -134,7 +212,7 @@ class Tank:
         self.LF = V_L / self.V
 
         # Computes total heat ingress to the liquid
-        Q_L_tot = self.Q_L_in + self.Q_b + self.Q_VL(self.cryogen.T_V) + self.Q_wi
+        Q_L_tot = self.Q_L_int(t) + self.Q_b_calc(t) + self.Q_VL(self.cryogen.T_V) + self.Q_wint(t)
 
         # Calculates latent heat of vaporisation
         dH_LV = self.cryogen.h_V - self.cryogen.h_L
@@ -169,7 +247,8 @@ class Tank:
         self.cryogen.update_cp_V(self.z_grid, T)
 
         # Advective velocity
-        v_z = self.v_z
+        # v_z = self.v_z
+        v_z = self.v_z_calc(t)
 
         # Interface velocity
         v_int = v_z * (self.cryogen.rho_V_avg/self.cryogen.rho_L)
@@ -195,7 +274,7 @@ class Tank:
         # Compute the wall heating considering the wall heat partitioning.
         # (1-eta_w) is the fraction of the external vapour heat ingress
         # that is transferred in the vapour 
-        S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_air - T[1:-1]) * (1-self.eta_w)
+        S_wall = (4*self.U_V*self.d_o/self.d_i**2) * (self.T_env(t) - T[1:-1]) * (1-self.eta_w)
 
         # Update dT
         dT[1:-1] = alpha*d2T_dz2 - (v_z-v_int) * dT_dz + (alpha/self.cryogen.k_V_avg) * S_wall
@@ -212,23 +291,66 @@ class Tank:
         else:
             # Neumann boundary condition
             dT[-1] = (4*dT[-2] - dT[-3])/3
-            #dT[-1] = dT[-2]
         
         return dT
-    
+
+
+    def sys_wall(self, t, y):
+
+        # Liquid temperature
+        T_L = y[0]
+
+        # Wall temperature
+        T = y[len(self.z_grid):]
+
+        # Dimension grid 
+        r  = self.r_grid * (self.d_o - self.d_i) * 0.5
+
+        # Uniform spacing
+        dr = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i) * 0.5
+        
+        # Number of grid points
+        n = len(self.r_grid) 
+
+        # Boundary corrections
+        T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
+
+        T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
+
+
+        # Initialise temperature change vector
+        dT = np.zeros(n) 
+
+        # Compute the differences
+        dT_dr = (T[2:] - T[:-2]) / (2 * dr)
+
+        # Compute the second derivatives
+        d2T_dr2 = (T[2:] - 2*T[1:-1] + T[:-2]) / (dr**2)
+
+        # Update dT
+        dT[1:-1] = (self.alpha_w /r[1:-1]) * (dT_dr + r[1:-1] * d2T_dr2)
+
+        # Boundary conditions (interpolation)
+        dT[0]  = 2*dT[1]  - dT[2]
+        dT[-1] = 2*dT[-2] - dT[-3]
+
+        return dT
+
     def sys_isobaric(self, t, y):
         '''
         Constructs liquid volume + vapour temperature subsystem
         '''
         # Liquid volume derivative
-        # dV = self.sys_liq_volume(self, t, y[0])
         dV = self.sys_liq_volume(t, y[0])
+
         # ODE system with nodal vapour temperature derivatives
-        #dT_V =  self.sys_temperature(self, t, y[1:])
-        dT_V =  self.sys_temperature(t, y[1:])
+        dT_V =  self.sys_temperature(t, y[1:len(self.z_grid)+1])
+
+        # Wall temperature derivative
+        dT_w = self.sys_wall(t, y[1:])
 
         # Return right hand side of the ODE system
-        return np.append(dV, dT_V)
+        return np.concatenate([[dV], dT_V, dT_w])
 
     def evap_rate(self):
         '''
@@ -255,8 +377,38 @@ class Tank:
         
         return self.cryogen.k_V_avg * self.A_T * dTdz_i
     
+    def Q_L_int(self, t):
+        """ Liquid heat ingress through the walls
+        in W """
+        return self.U_L * self.A_L * (self.T_env(t) - self.cryogen.T_sat)
+
+    def Q_wint(self, t):
+        """ Heat transferred directly to the vapour-liquid interface
+        through the tank wall in contact to the vapour / W """
+        return self.U_V * self.A_V * self.eta_w * (self.T_env(t) - self.cryogen.Tv_avg)
+    
+    def v_z_calc(self, t):
+        """Calculate advective velocity with respect to tank liquid filling"""
+        # Initial evaporation rate kg/s
+        BL_0 = (self.Q_L_int(t) + self.Q_b_calc(t) + self.Q_wint(t)) / ((self.cryogen.h_V - self.cryogen.h_L))
+        v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
+        return v_z   
+
+    def Q_b_calc(self, t):
+        """Calculate bottom heat ingress"""
+        if self.Q_b_fixed is None:
+            "If Q_b_fixed is not set, calculate"
+            return self.U_L * self.A_T * (self.T_env(t) - self.cryogen.T_sat)
+        return self.Q_b_fixed
+    
+    def tau_calc(self, t):
+        '''Provides a conservative estimate of the 
+        duration of the transient period
+        of rapid vapour heating'''
+        return 2 * self.l_V/self.v_z_calc(t)
+    
     # Plotting routines
-    def plot_tv(self, t_unit='s'):
+    def plot_tv(self, t_unit='s', hour = 0):
         '''
         Plots vapour temperature profile after running a solution
         '''
@@ -267,7 +419,21 @@ class Tank:
                             'and thereafter run tank.plot_tv() again')  
 
         # Produce vapour temperature plot
-        plots.plot_tv(self, t_unit)
+        plots.plot_tv(self, t_unit, hour)
+        return
+
+    def plot_tw(self, t_unit='s', hour = 0):
+        '''
+        Plots wall temperature profile after running a solution
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_tv() again')  
+
+        # Produce vapour temperature plot
+        plots.plot_tw(self, t_unit, hour)
         return
     
     def plot_V_L(self, unit='m3', t_unit='s'):
@@ -345,7 +511,42 @@ class Tank:
         # Produce liquid volume plot
         plots.plot_tv_BOG(self, t_unit)
 
-    
+    def plot_Q_w(self, unit='kW', t_unit = 's'):
+        '''
+        Plots wall heat ingress as a function of time
+
+        Inputs:
+            unit: 'kW', 'W'
+        Returns:
+            None
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_Q_w() again')  
+
+        # Produce liquid volume plot
+        plots.plot_Q_w(self, unit, t_unit)
+
+    def plot_T_w_avg(self, t_unit = 's'):
+        '''
+        Plots average wall temperature as a function of time
+
+        Inputs:
+            t_unit: 's', 'h', 'd', 'w'
+        Returns:
+            None
+        '''
+
+        if self.sol is None:
+            raise TypeError('The solution object tank.sol does not exist.\n'
+                            'Run tank.evaporate(t) to generate a solution\n'
+                            'and thereafter run tank.plot_Q_w() again')  
+
+        # Produce liquid volume plot
+        plots.plot_T_w_avg(self, t_unit)
+
     def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
@@ -354,10 +555,13 @@ class Tank:
 
         It also reconstructs local variables of interest, such as T_BOG.
         '''  
-        Q_VL = []
-        Tv_avg = []
+        Q_VL      = []
+        Tv_avg    = []
+        Tw_avg    = []
         rho_V_avg = []
-        T_BOG = []
+        T_BOG     = []
+        Q_LW      = []
+        Q_Wenv    = []
 
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
@@ -367,8 +571,8 @@ class Tank:
 
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
-            T_v = self.sol.y[1:, i]
-
+            T_v = self.sol.y[1:len(self.z_grid) + 1, i]
+            T_w = self.sol.y[len(self.z_grid) + 1:, i]
             # Calculate and append Q_VL
 
             # Update vapour thermal conductivity
@@ -391,31 +595,47 @@ class Tank:
 
             # BOG temperature
             T_BOG.append(T_v[-1])
+
+            # Average wall temperature
+            Tw_avg.append(simpson(T_w, x = self.r_grid))
+
+            # Calculate wall temperature gradient 
+            dr = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
+            dTdr_i = (-3 * T_w[0] + 4 * T_w[1] - T_w[2])/(2*dr)
+            dTdr_o = ( 3 * T_w[-1] - 4 * T_w[-2] + T_w[-3])/(2*dr) 
+
+            # Append Q_LW and Q_Wenv calculated using the Fourier's law
+            Q_LW.append(self.k_w * dTdr_i)
+            Q_Wenv.append(-self.k_w * dTdr_o)
+
         
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
         rho_V_avg = np.array(rho_V_avg)
 
         # Vectorise
-        self.data['V_L'] = self.sol.y[0]
-        self.data['Tv_avg'] = np.array(Tv_avg)
+        self.data['V_L']       = self.sol.y[0]
+        self.data['Tv_avg']    = np.array(Tv_avg)
         self.data['rho_V_avg'] = rho_V_avg
-        self.data['Q_VL'] = np.array(Q_VL)
-        self.data['T_BOG'] = np.array(T_BOG)
+        self.data['Q_VL']      = np.array(Q_VL)
+        self.data['T_BOG']     = np.array(T_BOG)
+        self.data['Tw_avg']    = np.array(Tw_avg)
+        self.data['Q_LW']      = np.array(Q_LW)
+        self.data['Q_Wenv']    = np.array(Q_Wenv)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
         # but reconstructed from the liquid volume
-        Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
+        Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_env(self.sol.t) - self.cryogen.T_sat)   
 
         # The driving force of Q_V is the average temperature
-        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
+        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_env(self.sol.t) - self.data['Tv_avg'])
         
         # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
         self.data['Q_V'] = np.array(Q_V)
         self.data['Q_Vw'] = np.array(Q_V) * self.eta_w
-        self.data['Q_tot'] = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  + self.Q_b
+        self.data['Q_tot'] = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  self.Q_b_calc(self.sol.t)
 
         # Evaporation rate in kg/s
         self.data['B_L'] = self.evap_rate()
@@ -458,7 +678,6 @@ class Tank:
         dy[-1] = (3*y[-1] - 4*y[-2] + y[-3])/(2*dt)
         return dy
 
-    
     def interpolate(self, t, y, t_int = 0):
         '''
         Interpolate/extrapolate dependent variable 
@@ -472,7 +691,6 @@ class Tank:
         linear_interp = interp1d(t[1:], y[1:],
                                   kind='linear', fill_value='extrapolate')
         return linear_interp(t_int)
-
 
 
     # Properties
@@ -496,7 +714,7 @@ class Tank:
     def Q_L_in(self):
         """ Liquid heat ingress through the walls
         in W """
-        return self.U_L * self.A_L * (self.T_air - self.cryogen.T_sat)
+        return self.U_L * self.A_L * (self.T_air- self.cryogen.T_sat)
     
     @property
     def Q_wi(self):
@@ -517,7 +735,6 @@ class Tank:
         """Returns evaporation rate in kg/s
         """
         return self.v_z * self.A_T * self.cryogen.rho_V_avg
-
 
     @property
     def Q_b(self):
