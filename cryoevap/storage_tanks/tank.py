@@ -58,18 +58,18 @@ class Tank:
                                T_avg_annual = None, T_range_annual = None, freq_annual = 2*np.pi/(365*24*3600)):
         """Set separately environmental temperature and properties
 
-        If you want to set the environmental temperature for the day, set T_avg_day, T_range_day and freq_day
-        If you want to set the environmental temperature for the annual period, set T_avg_annual, T_range_annual and freq_annual
-        If you want to set both, set all the parameters except T_avg_day (T_range_day, freq_day, T_avg_annual, T_range_annual, freq_annual)
+        If you want to set the environmental temperature for the day, set T_avg_day, T_range_day and freq_day.
+        If you want to set the environmental temperature for the annual period, set T_avg_annual, T_range_annual and freq_annual.
+        If you want to set both, set all the parameters (T_range_day, freq_day, T_avg_annual, T_range_annual, freq_annual). Notice that T_avg_day is not necessary.
 
         Inputs:
             T_avg_day   : average environmental temperature / K
             T_range_day : range of temperature during the period (T_max - T_min) / K
-            freq_day    : frecuency of the temperature between the maximum and minimum temperature / Hz
+            freq_day    : frequency of the temperature between the maximum and minimum temperature / Hz
             h_env       : convective heat transfer coefficient / W/m^2K
             T_avg_annual: average environmental temperature / K
             T_range_annual: range of temperature during the period (T_max - T_min) / K
-            freq_annual : frecuency of the temperature between the maximum and minimum temperature / Hz       
+            freq_annual : frequency of the temperature between the maximum and minimum temperature / Hz       
         Returns:
             None
         """ 
@@ -188,6 +188,13 @@ class Tank:
         # Initial wall temperature
         Tw_0 = np.ones(len(self.r_grid)) * self.Init_wall_T
 
+        dr = (self.r_grid[1] - self.r_grid[0]) * (self.d_o - self.d_i) * 0.5
+
+        Tw_0[0]  = (self.H_L * Tv_0[0] + Tw_0[1] * (4 * self.k_w / (2 * dr)) - Tw_0[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
+
+        Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
+
+
         # Concatenate initial conditions in a single vector
         IC = np.concatenate([[VL_0], Tv_0, Tw_0])
 
@@ -304,10 +311,10 @@ class Tank:
         T = y[len(self.z_grid):]
 
         # Dimension grid 
-        r  = self.r_grid * (self.d_o - self.d_i) * 0.5
+        r  = self.r_grid * (self.d_o - self.d_i) * 0.5 + self.d_i*0.5
 
         # Uniform spacing
-        dr = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i) * 0.5
+        dr = (self.r_grid[1] - self.r_grid[0]) * (self.d_o - self.d_i) * 0.5
         
         # Number of grid points
         n = len(self.r_grid) 
@@ -316,7 +323,6 @@ class Tank:
         T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
 
         T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
-
 
         # Initialise temperature change vector
         dT = np.zeros(n) 
@@ -331,8 +337,8 @@ class Tank:
         dT[1:-1] = (self.alpha_w /r[1:-1]) * (dT_dr + r[1:-1] * d2T_dr2)
 
         # Boundary conditions (interpolation)
-        dT[0]  = 2*dT[1]  - dT[2]
         dT[-1] = 2*dT[-2] - dT[-3]
+        dT[0]  = 2*dT[1]  - dT[2]
 
         return dT
 
