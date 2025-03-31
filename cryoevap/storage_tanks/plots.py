@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 def plot_tv(tank, t_unit='s', hour = 0):
 
@@ -175,7 +176,7 @@ def plot_Q(tank, unit='kW', t_unit = 's'):
 
     # Q_{V,w} plot
     #ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(1/6))
-    ax[1][1].plot(tank.sol.t/t_dict[t_unit], ( (tank.data['Q_Vw'] + tank.data['Q_VL'] + tank.data['Q_L'] + tank.Q_b)  *
+    ax[1][1].plot(tank.sol.t/t_dict[t_unit], ( (tank.data['Q_Vw'] + tank.data['Q_VL'] + tank.data['Q_L'] + tank.Q_b(tank.sol.t))  *
                                 unit_conv[unit]), label="Q_{tot}",color = cmap(1/6))
     # ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / " + unit)
     ax[1][1].set_ylabel(r"$\dot{Q}_{tot}$ / " + unit)
@@ -218,56 +219,67 @@ def plot_tv_BOG(tank, t_unit = 's'):
 ############################################################################################################
 ##### NEW FUNCTIONS #####
 ############################################################################################################
-import numpy as np
 
 
 def plot_tw(tank, t_unit='s', hour = 0):
+    '''
+    Plots the wall temperature profiles at specific times.
 
-    # Parámetros configurables
-    fixed_hour = hour  # Hora fija (8 AM)
-    n_days = 5         # Número de curvas a graficar
+    Inputs:
+        tank: Tank object with a sol object produced by the evaporate() function.
+        t_unit: Time units. Options: 's' (seconds), 'min' (minutes), 'h' (hours), 
+                'd' (days), or 'w' (weeks). Default: 's'.
+        hour: Fixed hour (in seconds) to adjust the time labels on the plot. Default: 0.
 
-    # Factores de conversión de unidades de tiempo
+    Returns:
+        None:
+    '''
+
+    # Configurable parameters
+    fixed_hour = hour  # Fixed hour (8 AM)
+    n_days = 5         # Number of curves to plot
+
+    # Time unit conversion factors
     t_dict = {'s': 1, 'min': 60, 'h': 3600, 'd': 3600 * 24, 'w': 3600 * 24 * 7}
 
-    # Tiempo total en días
+    # Total time in days
     t_final_days = tank.sol.t[-1] / t_dict['d']
 
-    # Seleccionar los tiempos de muestreo
+    # Select sampling times
     if t_final_days >= 5:
-        selected_days = np.round(np.linspace(0, t_final_days, n_days)).astype(int)  # Días discretos
-        selected_times = (selected_days * t_dict['d']) + fixed_hour  # Convertir a segundos y fijar hora
+        selected_days = np.round(np.linspace(0, t_final_days, n_days)).astype(int)  # Discrete days
+        selected_times = (selected_days * t_dict['d']) + fixed_hour  # Convert to seconds and fix hour
     else:
-        selected_times = np.linspace(0, tank.sol.t[-1], n_days)  # Equiespaciado si < 5 días
+        selected_times = np.linspace(0, tank.sol.t[-1], n_days)  # Equally spaced if < 5 days
 
-    # Crear mapa de colores
+    # Create colormap
     cmap = plt.get_cmap('cividis')
     norm = plt.Normalize(vmin=tank.sol.t[1], vmax=tank.sol.t[-1])
 
-    # Crear figura
+    # Create figure
     fig, ax = plt.subplots(figsize=[7, 5])
 
-    # Graficar curvas de temperatura para los tiempos seleccionados
+    # Plot temperature curves for selected times
     for i, t_sel in enumerate(selected_times):
-        idx = np.searchsorted(tank.sol.t, t_sel)  # Buscar el índice más cercano
+        idx = np.searchsorted(tank.sol.t, t_sel)  # Find the closest index
 
         # print(tank.sol.t[idx]/3600)
         if idx >= len(tank.sol.t):
-            idx = len(tank.sol.t) - 1  # Evitar desbordamientos
+            idx = len(tank.sol.t) - 1  # Avoid overflow
 
-        # Obtener perfil de temperatura
+        # Get temperature profile
         T_w = tank.sol.y[len(tank.z_grid) + 1:, idx]
 
-        # Graficar con color correspondiente al tiempo
+        # Plot with color corresponding to time
         ax.plot(tank.r_grid * (tank.d_o - tank.d_i) * 0.5, T_w, color=cmap(norm(tank.sol.t[idx])))
 
-        # Agregar etiqueta de tiempo al lado del gráfico
+        # Add time label next to the plot
         ax.text(1.02, (i + 0.5) / n_days, f't={tank.sol.t[idx]/t_dict[t_unit]:.1f} {t_unit}', 
                 transform=ax.transAxes, verticalalignment='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='none',
                         facecolor=cmap(norm(tank.sol.t[idx])), alpha=0.6))
 
-    # Configuración del gráfico
+    # Plot configuration
     ax.grid(True)
     ax.set_xlabel(r'Radius $r$ / m')
     ax.set_ylabel('Temperature / K')
@@ -300,8 +312,8 @@ def plot_Q_w(tank, unit = 'W', t_unit = 's'):
     # Extract evaporation and BOG rates and convert to kg/h
     # Visualise evaporation and boil-off gas rate in kg/h
     plt.figure(figsize=[7, 5])
-    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_Wenv']*unit_conv[unit] , label=r'Heat flow to the enviroment, $\dot{Q}_{W,env}$', color = cmap(1/6))
-    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_LW'] *unit_conv[unit], label=r'Heat flow to the internal wall, $\dot{Q}_{LW}$', color = cmap(5/6)) 
+    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_env_w']*unit_conv[unit] , label=r'Heat flow to the enviroment, $\dot{Q}_{W,env}$', color = cmap(1/6))
+    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_w_L'] *unit_conv[unit], label=r'Heat flow to the internal wall, $\dot{Q}_{LW}$', color = cmap(5/6)) 
     plt.grid()
     plt.xlabel('Time / ' + t_unit)
     plt.ylabel(r'Heat flow $/$ ' + unit)
@@ -309,6 +321,17 @@ def plot_Q_w(tank, unit = 'W', t_unit = 's'):
     return
 
 def plot_T_w_avg(tank, t_unit = 's'):
+    '''
+    Plots average wall temperature and the environmental temperature
+
+    Inputs:
+        tank: Tank object with a sol object produced by the evaporate() function
+        t_unit: Time units. Default: s
+    
+    Returns:
+        None:
+    '''
+        
     # Create a colormap
     cmap = plt.get_cmap('cividis')
     

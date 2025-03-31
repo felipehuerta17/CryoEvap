@@ -22,7 +22,19 @@ class Tank:
     evaporation of pure cryogens"""
 
     def __init__(self, d_i, d_o, V, LF=0.97):
-        """ Class constructor """
+        """
+        Constructor for the Tank class.
+        This initializes a tank object with its geometric properties, 
+        cryogen state, simulation parameters, and data storage for 
+        simulation results.
+        
+        Inputs:
+            d_i : Internal diameter of the tank [m].
+            d_o : External diameter of the tank [m].
+            V   : Volume of the tank [m^3].
+            LF  : Initial liquid filling fraction (default is 0.97).
+        """
+
         # Compulsory parameters
         self.d_i     = d_i                   # [m] Tank internal diameter
         self.d_o     = d_o                   # [m] Tank external diameter
@@ -45,13 +57,10 @@ class Tank:
         self.time_interval = 3600
 
         # Store integrated quantities as dictionaries
-        self.data = {'Time':[], 'Tv_avg': [], 'rho_V_avg': [],
-                    'Q_VL': [],'Q_L': [], 'Q_V': [],
-                    'V_L': [], 'B_L': [], 'BOG': [],
-                    'drho_V_avg': [], 'dV_L': [], 'Tw_avg': [],
-                    'Q_Wenv':[], 'Q_LW':[]}
-        
-
+        self.data = {'Time' : [], 'Tv_avg' : [], 'rho_V_avg': [], 'Q_VL'      : [],
+                     'Q_L'  : [], 'Q_V'    : [], 'Q_Vw'     : [], 'Q_env_w'   : [],
+                     'Q_w_L': [], 'Q_tot'  : [], 'V_L'      : [], 'B_L'       : [],
+                     'BOG'  : [], 'dV_L'   : [], 'Tw_avg'   : [], 'drho_V_avg': []}
         pass
 
     def set_EnvironmentalProps(self, T_avg_day = None, T_range_day = None, freq_day = 2*np.pi/(24*3600), h_env = 15,
@@ -150,9 +159,9 @@ class Tank:
 
         # Set initial wall temperature
         if T_init:
-            self.Init_wall_T = self.T_air
+            self.T_w = np.ones(len(self.r_grid)) * T_air
         else:
-            self.Init_wall_T = self.cryogen.T_sat      
+            self.T_w = np.ones(len(self.r_grid)) * self.cryogen.T_sat
 
         # Define T_env as constant by default
         self.T_env = lambda t: self.T_air
@@ -162,7 +171,6 @@ class Tank:
     def evaporate(self, t_f):
         ''' Simulates the isobaric evaporation of the stored cryogen for the time t_f
         '''
-        
         # Convert initial vapour temperature in an array
         self.cryogen.T_V = self.cryogen.T_V * np.ones(len(self.z_grid))
 
@@ -186,15 +194,15 @@ class Tank:
                     4 * Tv_0[-2] - Tv_0[-3])/(3 + 2 * self.U_roof * (1-self.eta_w) * dz * self.cryogen.k_V_avg))
 
         # Initial wall temperature
-        Tw_0 = np.ones(len(self.r_grid)) * self.Init_wall_T
+        Tw_0 = np.ones(len(self.r_grid)) * self.T_w[0]
 
         dr = (self.r_grid[1] - self.r_grid[0]) * (self.d_o - self.d_i) * 0.5
 
-        Tw_0[0]  = (self.H_L * Tv_0[0] + Tw_0[1] * (4 * self.k_w / (2 * dr)) - Tw_0[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
-
-        Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
-
-
+        ###################################################################################
+        # Tw_0[0]  = (self.H_L * Tv_0[0] + Tw_0[1] * (4 * self.k_w / (2 * dr)) - Tw_0[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
+        # Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
+        ###################################################################################
+        
         # Concatenate initial conditions in a single vector
         IC = np.concatenate([[VL_0], Tv_0, Tw_0])
 
@@ -219,7 +227,7 @@ class Tank:
         self.LF = V_L / self.V
 
         # Computes total heat ingress to the liquid
-        Q_L_tot = self.Q_L_int(t) + self.Q_b_calc(t) + self.Q_VL(self.cryogen.T_V) + self.Q_wint(t)
+        Q_L_tot = self.Q_L_in(self.T_w) + self.Q_b(t) + self.Q_VL(self.cryogen.T_V) + self.Q_w_i(t)
 
         # Calculates latent heat of vaporisation
         dH_LV = self.cryogen.h_V - self.cryogen.h_L
@@ -248,14 +256,12 @@ class Tank:
 
         # Update average vapour density, thermal conductivity
         # and specific heat capacity using the Simpson's rule
-
         self.cryogen.update_rho_V(self.z_grid, T)
         self.cryogen.update_k_V(self.z_grid, T)
         self.cryogen.update_cp_V(self.z_grid, T)
 
         # Advective velocity
-        # v_z = self.v_z
-        v_z = self.v_z_calc(t)
+        v_z = self.v_z(t)
 
         # Interface velocity
         v_int = v_z * (self.cryogen.rho_V_avg/self.cryogen.rho_L)
@@ -301,14 +307,18 @@ class Tank:
         
         return dT
 
-
     def sys_wall(self, t, y):
-
+        '''
+        Method of lines for the wall temperature
+        '''
         # Liquid temperature
         T_L = y[0]
 
         # Wall temperature
         T = y[len(self.z_grid):]
+
+        # Update wall temperature
+        self.T_w = T
 
         # Dimension grid 
         r  = self.r_grid * (self.d_o - self.d_i) * 0.5 + self.d_i*0.5
@@ -319,10 +329,13 @@ class Tank:
         # Number of grid points
         n = len(self.r_grid) 
 
+        #############################################################################
         # Boundary corrections
-        T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
+        if t > 0:
+            T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
 
-        T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
+            T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
+        #############################################################################
 
         # Initialise temperature change vector
         dT = np.zeros(n) 
@@ -344,7 +357,7 @@ class Tank:
 
     def sys_isobaric(self, t, y):
         '''
-        Constructs liquid volume + vapour temperature subsystem
+        Constructs liquid volume + vapour temperature + wall temperature subsystem
         '''
         # Liquid volume derivative
         dV = self.sys_liq_volume(t, y[0])
@@ -358,7 +371,7 @@ class Tank:
         # Return right hand side of the ODE system
         return np.concatenate([[dV], dT_V, dT_w])
 
-    def evap_rate(self):
+    def evap_rate(self, t):
         '''
         Calculates evaporation rate after completing an evaporation
         '''
@@ -369,49 +382,53 @@ class Tank:
             # Calculates latent heat of vaporisation
             dH_LV = self.cryogen.h_V - self.cryogen.h_L
 
-            return 1 /dH_LV * (self.Q_b + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw']) 
+            return 1 /dH_LV * (self.Q_b(t) + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw']) 
         
     def Q_VL(self, T_V):
         '''
         Calculate vapour to liquid heat transfer rate
         using the Fourier's law
         '''
-
         # Temperature gradient at the interface
         dz = (self.z_grid[1] - self.z_grid[0])*self.l_V
         dTdz_i = (-3 * T_V[0] + 4 * T_V[1] - T_V[2])/(2*dz)
         
         return self.cryogen.k_V_avg * self.A_T * dTdz_i
     
-    def Q_L_int(self, t):
-        """ Liquid heat ingress through the walls
-        in W """
-        return self.U_L * self.A_L * (self.T_env(t) - self.cryogen.T_sat)
+    def Q_L_in(self, T_w):
+        """ Liquid heat ingress through the walls in W """
 
-    def Q_wint(self, t):
+        # Temperature gradient at the internal wall
+        dr = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
+        dTdr_i = (-3 * T_w[0] + 4 * T_w[1] - T_w[2])/(2*dr)
+
+        return self.k_w * self.A_L * dTdr_i
+
+    def Q_w_i(self, t):
         """ Heat transferred directly to the vapour-liquid interface
         through the tank wall in contact to the vapour / W """
         return self.U_V * self.A_V * self.eta_w * (self.T_env(t) - self.cryogen.Tv_avg)
     
-    def v_z_calc(self, t):
-        """Calculate advective velocity with respect to tank liquid filling"""
-        # Initial evaporation rate kg/s
-        BL_0 = (self.Q_L_int(t) + self.Q_b_calc(t) + self.Q_wint(t)) / ((self.cryogen.h_V - self.cryogen.h_L))
-        v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
-        return v_z   
-
-    def Q_b_calc(self, t):
+    def Q_env_w(self, T_w):
+        """ Heat transferred from the environment to the external wall of the tank / W """
+        # Temperature gradient at the internal wall
+        dr     = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
+        dTdr_o = ( 3 * T_w[-1] - 4 * T_w[-2] + T_w[-3]) / (2*dr) 
+        return - dTdr_o * self.k_w * self.A_L
+    
+    def Q_b(self, t):
         """Calculate bottom heat ingress"""
         if self.Q_b_fixed is None:
             "If Q_b_fixed is not set, calculate"
             return self.U_L * self.A_T * (self.T_env(t) - self.cryogen.T_sat)
         return self.Q_b_fixed
     
-    def tau_calc(self, t):
-        '''Provides a conservative estimate of the 
-        duration of the transient period
-        of rapid vapour heating'''
-        return 2 * self.l_V/self.v_z_calc(t)
+    def v_z(self, t):
+        """Calculate advective velocity with respect to tank liquid filling"""
+        # Initial evaporation rate kg/s
+        BL_0 = (self.Q_L_in(self.T_w) + self.Q_b(t) + self.Q_w_i(t)) / ((self.cryogen.h_V - self.cryogen.h_L))
+        v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
+        return v_z   
     
     # Plotting routines
     def plot_tv(self, t_unit='s', hour = 0):
@@ -553,6 +570,7 @@ class Tank:
         # Produce liquid volume plot
         plots.plot_T_w_avg(self, t_unit)
 
+    # Reconstruction of results
     def _reconstruct(self):
         '''
         Reconstructs integrated quantities such as the vapour
@@ -561,13 +579,13 @@ class Tank:
 
         It also reconstructs local variables of interest, such as T_BOG.
         '''  
-        Q_VL      = []
         Tv_avg    = []
         Tw_avg    = []
         rho_V_avg = []
         T_BOG     = []
-        Q_LW      = []
-        Q_Wenv    = []
+        Q_VL      = []
+        Q_L_in    = []
+        Q_env_w   = []
 
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
@@ -575,7 +593,7 @@ class Tank:
         # Reconstruct liquid length for heat transfer calculations
         l_L = self.sol.y[0] / self.A_T
 
-        for i in range(0, len(self.sol.t)):
+        for i in range(len(self.sol.t)):
             # Get the temperature at this time step
             T_v = self.sol.y[1:len(self.z_grid) + 1, i]
             T_w = self.sol.y[len(self.z_grid) + 1:, i]
@@ -586,7 +604,7 @@ class Tank:
             
             # Calculate vapour temperature gradient from the vapour length
             # at the desired timestep
-            dz = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
+            dz     = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
             dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)    
             
             # Append Q_VL calculated using the Fourier's law
@@ -606,48 +624,50 @@ class Tank:
             Tw_avg.append(simpson(T_w, x = self.r_grid))
 
             # Calculate wall temperature gradient 
-            dr = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
+            dr     = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
             dTdr_i = (-3 * T_w[0] + 4 * T_w[1] - T_w[2])/(2*dr)
             dTdr_o = ( 3 * T_w[-1] - 4 * T_w[-2] + T_w[-3])/(2*dr) 
 
+            # Calculate wall areas
+            A_int = np.pi * self.d_i * l_L[i]
+            A_ext = np.pi * self.d_o * l_L[i]
+
             # Append Q_LW and Q_Wenv calculated using the Fourier's law
-            Q_LW.append(self.k_w * dTdr_i)
-            Q_Wenv.append(-self.k_w * dTdr_o)
+            Q_L_in.append(self.k_w * dTdr_i * A_int)
+            Q_env_w.append(self.k_w * dTdr_o * A_ext)
 
         
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
-        rho_V_avg = np.array(rho_V_avg)
 
         # Vectorise
         self.data['V_L']       = self.sol.y[0]
         self.data['Tv_avg']    = np.array(Tv_avg)
-        self.data['rho_V_avg'] = rho_V_avg
-        self.data['Q_VL']      = np.array(Q_VL)
+        self.data['rho_V_avg'] = np.array(rho_V_avg)
         self.data['T_BOG']     = np.array(T_BOG)
         self.data['Tw_avg']    = np.array(Tw_avg)
-        self.data['Q_LW']      = np.array(Q_LW)
-        self.data['Q_Wenv']    = np.array(Q_Wenv)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
         # but reconstructed from the liquid volume
-        Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_env(self.sol.t) - self.cryogen.T_sat)   
 
         # The driving force of Q_V is the average temperature
-        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_env(self.sol.t) - self.data['Tv_avg'])
+        Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_env(self.sol.t) - self.data['Tv_avg']) 
         
         # Store reconstructed heat ingresses in the tank object
-        self.data['Q_L'] = np.array(Q_L)
-        self.data['Q_V'] = np.array(Q_V)
-        self.data['Q_Vw'] = np.array(Q_V) * self.eta_w
-        self.data['Q_tot'] = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  self.Q_b_calc(self.sol.t)
-
+        self.data['Q_VL']     = np.array(Q_VL)
+        self.data['Q_L']      = np.array(Q_L_in)
+        self.data['Q_V']      = np.array(Q_V)
+        self.data['Q_Vw']     = np.array(Q_V) * self.eta_w
+        self.data['Q_env_w']  = np.array(Q_env_w)
+        self.data['Q_w_L']    = np.array(Q_L_in) * -1
+        self.data['Q_tot']    = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  self.Q_b(self.sol.t)
+        
         # Evaporation rate in kg/s
-        self.data['B_L'] = self.evap_rate()
+        self.data['B_L'] = np.array(self.evap_rate(self.sol.t))
         
         # Average vapour density time derivative
-        self.data['drho_V_avg'] = self.dydt(self.sol.t, rho_V_avg)
+        self.data['drho_V_avg'] = self.dydt(self.sol.t, np.array(rho_V_avg))
 
         # Liquid volume time derivative
         self.data['dV_L'] = self.dydt(self.sol.t, self.sol.y[0])
@@ -700,7 +720,6 @@ class Tank:
 
 
     # Properties
-    
     @property
     def l_V(self):
         """Update liquid filling and vapour length"""
@@ -717,33 +736,35 @@ class Tank:
         return np.pi * self.d_o * self.l * (1-self.LF)
 
     @property
-    def Q_L_in(self):
+    def Q_L_in_(self):
         """ Liquid heat ingress through the walls
-        in W """
-        return self.U_L * self.A_L * (self.T_air- self.cryogen.T_sat)
+        in W, considering the environmental temperature as constant """
+        return self.U_L * self.A_L * (self.T_air - self.cryogen.T_sat)
     
     @property
-    def Q_wi(self):
+    def Q_wi_(self):
         """ Heat transferred directly to the vapour-liquid interface
-        through the tank wall in contact to the vapour / W """
+        through the tank wall in contact to the vapour / W, considering the environmental temperature as constant """
         return self.U_V * self.A_V * self.eta_w * (self.T_air - self.cryogen.Tv_avg)
     
     @property
-    def v_z(self):
-        """Update advective velocity with respect to tank liquid filling"""
+    def v_z_(self):
+        """Update advective velocity with respect to tank liquid filling,
+        considering the environmental temperature as constant"""
         # Initial evaporation rate kg/s
-        BL_0 = (self.Q_L_in + self.Q_b + self.Q_wi) / ((self.cryogen.h_V - self.cryogen.h_L))
+        BL_0 = (self.Q_L_in_ + self.Q_b_ + self.Q_wi_) / ((self.cryogen.h_V - self.cryogen.h_L))
         v_z = 4 * BL_0 / (self.cryogen.rho_V_sat * np.pi * self.d_i ** 2)
         return v_z
 
     @property
     def b_l_dot(self):
-        """Returns evaporation rate in kg/s
-        """
-        return self.v_z * self.A_T * self.cryogen.rho_V_avg
+        """Returns evaporation rate in kg/s,
+        considering the environmental temperature as constant"""
+        return self.v_z_ * self.A_T * self.cryogen.rho_V_avg
 
     @property
-    def Q_b(self):
+    def Q_b_(self):
+        """Calculate bottom heat ingress, considering the environmental temperature as constant"""
         if self.Q_b_fixed is None:
             "If Q_b_fixed is not set, calculate"
             return self.U_L * self.A_T * (self.T_air - self.cryogen.T_sat)
@@ -752,7 +773,7 @@ class Tank:
     
     @property
     def tau(self):
-        '''Provides a conservative estimate of the 
+        """Provides a conservative estimate of the 
         duration of the transient period
-        of rapid vapour heating'''
-        return 2 * self.l_V/self.v_z
+        of rapid vapour heating, considering the environmental temperature as constant"""
+        return 2 * self.l_V/self.v_z_
