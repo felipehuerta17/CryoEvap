@@ -198,10 +198,10 @@ class Tank:
 
         dr = (self.r_grid[1] - self.r_grid[0]) * (self.d_o - self.d_i) * 0.5
 
-        ###################################################################################
-        # Tw_0[0]  = (self.H_L * Tv_0[0] + Tw_0[1] * (4 * self.k_w / (2 * dr)) - Tw_0[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
-        # Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
-        ###################################################################################
+        ##################################################################################
+        Tw_0[0]  = (self.H_L * Tv_0[0] + Tw_0[1] * (4 * self.k_w / (2 * dr)) - Tw_0[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
+        Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
+        ##################################################################################
         
         # Concatenate initial conditions in a single vector
         IC = np.concatenate([[VL_0], Tv_0, Tw_0])
@@ -633,7 +633,7 @@ class Tank:
             A_ext = np.pi * self.d_o * l_L[i]
 
             # Append Q_LW and Q_Wenv calculated using the Fourier's law
-            Q_L_in.append(self.k_w * dTdr_i * A_int)
+            Q_L_in.append(-self.k_w * dTdr_i * A_int)
             Q_env_w.append(self.k_w * dTdr_o * A_ext)
 
         
