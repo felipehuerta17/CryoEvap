@@ -96,16 +96,18 @@ class Tank:
 
         # Case 1: Just day temperature is set
         if T_avg_annual is None:
-            self.T_env = lambda t: self.T_env_avg_day + 0.5*self.range_env_day*np.sin(self.freq_env_day*t)
+            self.T_env  = lambda t: self.T_env_avg_day + 0.5*self.range_env_day*np.sin(self.freq_env_day*t)
+            self.dT_env = lambda t: 0.5*self.range_env_day*np.cos(self.freq_env_day*t)
 
         # Case 2: Just annual temperature is set
         elif T_range_day is None:
-            self.T_env = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t)
-        
+            self.T_env  = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t)
+            self.dT_env = lambda t: 0.5*self.range_env_annual*np.cos(self.freq_env_annual*t)
+
         # Case 3: Both day and annual temperatures are set
         else:
-            self.T_env = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t) + \
-                                   0.5*self.range_env_day*np.sin(self.freq_env_day*t)  
+            self.T_env  = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t) +  0.5*self.range_env_day*np.sin(self.freq_env_day*t)  
+            self.dT_env = lambda t: 0.5*self.range_env_annual*np.cos(self.freq_env_annual*t) +  0.5*self.range_env_day*np.cos(self.freq_env_day*t)
         pass
 
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True):  
@@ -198,10 +200,8 @@ class Tank:
 
         dr = (self.r_grid[1] - self.r_grid[0]) * (self.d_o - self.d_i) * 0.5
 
-        ##################################################################################
         Tw_0[0]  = (self.H_L * Tv_0[0] + Tw_0[1] * (4 * self.k_w / (2 * dr)) - Tw_0[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
         Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
-        ##################################################################################
         
         # Concatenate initial conditions in a single vector
         IC = np.concatenate([[VL_0], Tv_0, Tw_0])
@@ -329,13 +329,10 @@ class Tank:
         # Number of grid points
         n = len(self.r_grid) 
 
-        #############################################################################
         # Boundary corrections
-        if t > 0:
-            T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
+        T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
 
-            T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
-        #############################################################################
+        T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
 
         # Initialise temperature change vector
         dT = np.zeros(n) 
@@ -349,9 +346,19 @@ class Tank:
         # Update dT
         dT[1:-1] = (self.alpha_w /r[1:-1]) * (dT_dr + r[1:-1] * d2T_dr2)
 
-        # Boundary conditions (interpolation)
+        # Boundary conditions
+        # dT[0]  = self.alpha_w * ( (self.H_L / (self.k_w * r[0])) * (T[0] - T_L) + (2*T[0] - 5*T[1] + 4*T[2] - T[3]) / dr**2 )
+        # dT[-1] = self.alpha_w * ( (self.h_env / (self.k_w * r[-1])) * (self.T_env(t) - T[-1]) +  (2*T[-1] - 5*T[-2] + 4*T[-3] - T[-4]) / dr**2)
+
+        # # Boundary conditions (interpolation)
         dT[-1] = 2*dT[-2] - dT[-3]
         dT[0]  = 2*dT[1]  - dT[2]
+
+        # Boundary conditions
+        # dT_V_wall = 0  # Assuming no change in liquid temperature at the wall because is isobaric
+        # dT[0]     = (1/(self.H_L + 3*self.k_w/(2*dr))) * (4*self.k_w/(2*dr) * dT[1] - self.k_w/(2*dr) * dT[2] + self.H_L * dT_V_wall)
+        # dT[-1]    = (1/(self.h_env + 3*self.k_w/(2*dr))) * (4*self.k_w/(2*dr) * dT[-2] - self.k_w/(2*dr) * dT[-3] + self.h_env * self.dT_env(t))
+
 
         return dT
 
@@ -400,9 +407,9 @@ class Tank:
 
         # Temperature gradient at the internal wall
         dr = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
-        dTdr_i = (-3 * T_w[0] + 4 * T_w[1] - T_w[2])/(2*dr)
+        dTdr_i = (3 * T_w[0] - 4 * T_w[1] + T_w[2])/(2*dr)
 
-        return self.k_w * self.A_L * dTdr_i
+        return - self.k_w * self.A_L * dTdr_i
 
     def Q_w_i(self, t):
         """ Heat transferred directly to the vapour-liquid interface
@@ -605,10 +612,10 @@ class Tank:
             # Calculate vapour temperature gradient from the vapour length
             # at the desired timestep
             dz     = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
-            dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)    
+            dTdz_i = (3 * T_v[0] - 4 * T_v[1] + T_v[2])/(2*dz)    
             
             # Append Q_VL calculated using the Fourier's law
-            Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
+            Q_VL.append(-self.cryogen.k_V_avg * self.A_T * dTdz_i)
 
             # Average vapour temperature
             Tv_avg.append(simpson(T_v, x = self.z_grid))
@@ -625,7 +632,7 @@ class Tank:
 
             # Calculate wall temperature gradient 
             dr     = (self.r_grid[1] - self.r_grid[0])*(self.d_o - self.d_i)*0.5
-            dTdr_i = (-3 * T_w[0] + 4 * T_w[1] - T_w[2])/(2*dr)
+            dTdr_i = ( 3 * T_w[0] - 4 * T_w[1] + T_w[2])/(2*dr)
             dTdr_o = ( 3 * T_w[-1] - 4 * T_w[-2] + T_w[-3])/(2*dr) 
 
             # Calculate wall areas
@@ -633,8 +640,8 @@ class Tank:
             A_ext = np.pi * self.d_o * l_L[i]
 
             # Append Q_LW and Q_Wenv calculated using the Fourier's law
-            Q_L_in.append(-self.k_w * dTdr_i * A_int)
-            Q_env_w.append(self.k_w * dTdr_o * A_ext)
+            Q_L_in.append(-self.k_w * dTdr_i * A_int) # REVISAR Heat transferred to the liquid from the internal wall
+            Q_env_w.append(-self.k_w * dTdr_o * A_ext) # REVISAR Heat transferred to the wall from the environment
 
         
         # Extrapolate average vapour density for t = 0
