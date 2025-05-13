@@ -110,6 +110,7 @@ class Tank:
             self.dT_env = lambda t: 0.5*self.range_env_annual*np.cos(self.freq_env_annual*t) +  0.5*self.range_env_day*np.cos(self.freq_env_day*t)
         pass
 
+
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True):  
         """Set separately tank heat transfer properties
         
@@ -347,12 +348,12 @@ class Tank:
         dT[1:-1] = (self.alpha_w /r[1:-1]) * (dT_dr + r[1:-1] * d2T_dr2)
 
         # Boundary conditions
-        # dT[0]  = self.alpha_w * ( (self.H_L / (self.k_w * r[0])) * (T[0] - T_L) + (2*T[0] - 5*T[1] + 4*T[2] - T[3]) / dr**2 )
-        # dT[-1] = self.alpha_w * ( (self.h_env / (self.k_w * r[-1])) * (self.T_env(t) - T[-1]) +  (2*T[-1] - 5*T[-2] + 4*T[-3] - T[-4]) / dr**2)
+        dT[0]  = self.alpha_w * ( (self.H_L / (self.k_w * r[0])) * (T[0] - T_L) + (2*T[0] - 5*T[1] + 4*T[2] - T[3]) / dr**2 )
+        dT[-1] = self.alpha_w * ( (self.h_env / (self.k_w * r[-1])) * (self.T_env(t) - T[-1]) +  (2*T[-1] - 5*T[-2] + 4*T[-3] - T[-4]) / dr**2)
 
-        # # Boundary conditions (interpolation)
-        dT[-1] = 2*dT[-2] - dT[-3]
-        dT[0]  = 2*dT[1]  - dT[2]
+        # # # Boundary conditions (extrapolation)
+        # dT[-1] = 2*dT[-2] - dT[-3]
+        # dT[0]  = 2*dT[1]  - dT[2]
 
         # Boundary conditions
         # dT_V_wall = 0  # Assuming no change in liquid temperature at the wall because is isobaric

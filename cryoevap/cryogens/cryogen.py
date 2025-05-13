@@ -62,8 +62,6 @@ class Cryogen:
         properties calling CoolProp Helmholtz-based
         equation of state
         """
-
-
         fluid = self.name
 
         self.P = p # Pressure / Pa
