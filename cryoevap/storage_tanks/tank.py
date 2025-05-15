@@ -21,7 +21,7 @@ class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
 
-    def __init__(self, d_i, d_o, V, LF=0.97):
+    def __init__(self, d_i, d_o, V, LF = 0.97):
         """ Class constructor """
         # Compulsory parameters
         self.d_i = d_i  # [m] Tank internal diameter
