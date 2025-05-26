@@ -101,8 +101,8 @@ def plot_BOG(tank, unit='kg/h', t_unit = 's'):
     # Visualise evaporation and boil-off gas rate in kg/h
 
     plt.figure(figsize=[4,4])
-    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['B_L'] * unit_conv[unit], label='Evaporation rate, $\dot{B}_L$', color = cmap(1/6))
-    plt.plot(tank.sol.t[1:]/t_dict[t_unit], tank.data['BOG'][1:] * unit_conv[unit], label='Boil-off gas rate, $\dot{B}$', color = cmap(5/6)) 
+    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['B_L'] * unit_conv[unit], label=r'Evaporation rate, $\dot{B}_L$', color = cmap(1/6))
+    plt.plot(tank.sol.t[1:]/t_dict[t_unit], tank.data['BOG'][1:] * unit_conv[unit], label=r'Boil-off gas rate, $\dot{B}$', color = cmap(5/6)) 
     plt.grid()
     plt.xlabel('Time / ' + t_unit)
     plt.ylabel('Mass flow $/$ ' + unit)
@@ -140,20 +140,20 @@ def plot_Q(tank, unit='kW', t_unit = 's'):
 
     # Q_L_in plot
     ax[0][0].plot(tank.sol.t/t_dict[t_unit], (tank.data['Q_L']* unit_conv[unit]), color = cmap(1/6))
-    ax[0][0].set_ylabel("$\dot{Q}_L$ / " + unit)
+    ax[0][0].set_ylabel(r"$\dot{Q}_L$ / " + unit)
     ax[0][0].set_xlabel("Time / " + t_unit)
     ax[0][0].grid()
 
     # Q_V_in plot
     ax[1][0].plot(tank.sol.t/t_dict[t_unit], (tank.data['Q_V'] * unit_conv[unit]), color = cmap(1/6))
     ax[1][0].plot(tank.sol.t/t_dict[t_unit], (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(5/6))
-    ax[1][0].set_ylabel("$\dot{Q}_V$ /  " + unit)
+    ax[1][0].set_ylabel(r"$\dot{Q}_V$ /  " + unit)
     ax[1][0].set_xlabel("Time / " + t_unit)
     ax[1][0].grid()
 
     # Q_VL plot
     ax[0][1].plot(tank.sol.t/t_dict[t_unit], (tank.data['Q_VL'] * unit_conv[unit]), label="Q_VL", color = cmap(1/6))
-    ax[0][1].set_ylabel("$\dot{Q}_{VL}$ / " + unit)
+    ax[0][1].set_ylabel(r"$\dot{Q}_{VL}$ / " + unit)
     ax[0][1].set_xlabel("Time / " + t_unit)
     ax[0][1].grid()
 
@@ -162,7 +162,7 @@ def plot_Q(tank, unit='kW', t_unit = 's'):
     ax[1][1].plot(tank.sol.t/t_dict[t_unit], ( (tank.data['Q_Vw'] + tank.data['Q_VL'] + tank.data['Q_L'] + tank.Q_b)  *
                                 unit_conv[unit]), label="Q_{tot}",color = cmap(1/6))
     # ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / " + unit)
-    ax[1][1].set_ylabel("$\dot{Q}_{tot}$ / " + unit)
+    ax[1][1].set_ylabel(r"$\dot{Q}_{tot}$ / " + unit)
     ax[1][1].set_xlabel("Time / " + t_unit)
     ax[1][1].grid()
 
