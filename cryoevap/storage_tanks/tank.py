@@ -24,12 +24,10 @@ class Tank:
     def __init__(self, d_i, d_o, V, LF=0.97):
         """ Class constructor """
         # Compulsory parameters
-        self.d_i = d_i  # [m] Tank internal diameter
-        self.d_o = d_o  # [m] Tank external diameter
-        self.V = V  # [m^3] Tank volume
-        # self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
-        # self.l = V / self.A_T  # [m] Tank height
-        self.LF = LF # Initial liquid filling
+        self.d_i     = d_i        # [m] Tank internal diameter
+        self.d_o     = d_o        # [m] Tank external diameter
+        self.V       = V          # [m^3] Tank volume
+        self.LF      = LF         # Initial liquid filling
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
 
         # Simulation control
@@ -63,15 +61,15 @@ class Tank:
             None
         """
         # Tank parameters
-        self.U_L = U_L  
-        self.U_V = U_V 
+        self.U_L    = U_L  
+        self.U_V    = U_V 
         self.Q_roof = Q_roof  
-        self.T_air = T_air 
+        self.T_air  = T_air 
 
         # The walls, roof and bottom materials and thicknesses are assumed to be same.
         #  If not specified, it is assumed that their heat transfer coefficients are the same.
         self.U_roof = U_V         
-        self.U_b = U_L
+        self.U_b    = U_L
 
         # By default, the roof is thermally insulated
         self.roof_BC = "Neumann"  
@@ -222,8 +220,7 @@ class Tank:
         else:
             # Neumann boundary condition
             dT[-1] = (4*dT[-2] - dT[-3])/3
-            #dT[-1] = dT[-2]
-        
+
         return dT
     
     def sys_isobaric(self, t, y):
@@ -231,10 +228,8 @@ class Tank:
         Constructs liquid volume + vapour temperature subsystem
         '''
         # Liquid volume derivative
-        # dV = self.sys_liq_volume(self, t, y[0])
         dV = self.sys_liq_volume(t, y[0])
         # ODE system with nodal vapour temperature derivatives
-        #dT_V =  self.sys_temperature(self, t, y[1:])
         dT_V =  self.sys_temperature(t, y[1:])
 
         # Return right hand side of the ODE system
@@ -404,14 +399,14 @@ class Tank:
         
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
-        rho_V_avg = np.array(rho_V_avg)
+        rho_V_avg    = np.array(rho_V_avg)
 
         # Vectorise
-        self.data['V_L'] = self.sol.y[0]
-        self.data['Tv_avg'] = np.array(Tv_avg)
-        self.data['rho_V_avg'] = rho_V_avg
-        self.data['Q_VL'] = np.array(Q_VL)
-        self.data['T_BOG'] = np.array(T_BOG)
+        self.data['V_L']        = self.sol.y[0]
+        self.data['Tv_avg']     = np.array(Tv_avg)
+        self.data['rho_V_avg']  = rho_V_avg
+        self.data['Q_VL']       = np.array(Q_VL)
+        self.data['T_BOG']      = np.array(T_BOG)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
@@ -422,9 +417,9 @@ class Tank:
         Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L)) *( self.T_air - self.data['Tv_avg'])
         
         # Store reconstructed heat ingresses in the tank object
-        self.data['Q_L'] = np.array(Q_L)
-        self.data['Q_V'] = np.array(Q_V)
-        self.data['Q_Vw'] = np.array(Q_V) * self.eta_w
+        self.data['Q_L']   = np.array(Q_L)
+        self.data['Q_V']   = np.array(Q_V)
+        self.data['Q_Vw']  = np.array(Q_V) * self.eta_w
         self.data['Q_tot'] = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  + self.Q_b
 
         # Evaporation rate in kg/s
@@ -554,7 +549,6 @@ class Tank:
         duration of the transient period
         of rapid vapour heating'''
         return 2 * self.l_V/self.v_z
-        return 2*self.l_V/self.v_z
 
     @property
     def A_T(self):
