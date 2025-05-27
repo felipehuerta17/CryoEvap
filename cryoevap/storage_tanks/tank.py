@@ -114,6 +114,8 @@ class Tank:
         # Roof temperature
         dz = self.z_grid[1] - self.z_grid[0]
 
+
+        #### CORREGIR #####
         # Robin BC initial condition
         Tv_0[-1] = ((2 * self.U_roof * (1-self.eta_w) * dz * self.T_air/self.cryogen.k_V_avg +
                     4 * Tv_0[-2] - Tv_0[-3])/(3 + 2 * self.U_roof * (1-self.eta_w) * dz * self.cryogen.k_V_avg))
@@ -479,13 +481,13 @@ class Tank:
         return linear_interp(t_int)
     
     def BOR(self):
-        '''
-        Calculates boil-off rate as the ratio of
-        the initial volume evaporated every day
-        of storage
+        """
+        Calculates the Boil-Off Rate (BOR) as the percentage of the initial liquid volume that evaporates per day during storage.
+        The BOR is computed based on the change in liquid volume over the total elapsed storage time, normalized to a 24-hour period.
+        Returns:
+            float: The boil-off rate as a percentage of the initial volume evaporated per day.
+        """
 
-        Returns: BOR: percentage of the
-        '''
         BOR = (1 - self.data['V_L'][-1]/self.data['V_L'][0])* (86400/self.data['Time'][-1])
         return BOR
 
