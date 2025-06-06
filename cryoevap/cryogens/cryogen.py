@@ -27,6 +27,8 @@ class Cryogen:
         k_V=0,
         cp_V=0,
         MW=0,
+        T_air = 298,
+        g = 9.81
     ):
         """Constructor"""
         self.name = name
@@ -86,6 +88,19 @@ class Cryogen:
         self.cp_L = CP.PropsSI('C','P',p,'Q',0,fluid)  # Heat capacity at constant pressure / J/kg/K
         self.cp_V_avg = self.cp_V # Initialise cp_avg
         self.MW = MW = CP.PropsSI(fluid,'molemass')
+        
+        #Aqui empieza lo que agrego yo
+        """
+        self.Pr = CP.PropsSI('Prandtl', 'T', self.T_sat, 'Q', 0, fluid)
+        self.mu = CP.PropsSI('V', 'T', self.T_sat, 'Q', 0, fluid)
+        self.drho_L_dT = CP.PropsSI('d(D)/d(T)|P', 'T', self.T_sat, 'Q', 0, fluid)
+        self.beta_L = self.drho_L_dT / self.rho_L
+        self.drho_V_dT = CP.PropsSI('d(D)/d(T)|P', 'T', self.T_sat, 'Q', 1, fluid)
+        self.beta_L = self.drho_V_dT / self.rho_V
+        self.rho_aire = CP.PropsSI('D','P',p,'Q',0, 'air')
+        self.drho_dT_aire = CP.PropsSI('d(D)/d(T)|P', 'T', self.T_air, 'Q', 1, 'air')
+        self.beta_aire = self.drho_dT_aire / self.rho_aire
+        """
     
     def update_rho_V(self, z_grid, T_V):
         '''
@@ -161,4 +176,6 @@ class Cryogen:
         if np.any(np.isnan(cp_V)) or np.any(np.isinf(cp_V)):
             return
         self.cp_V_avg = simpson(cp_V, x = z_grid)
+
+
 

@@ -111,6 +111,28 @@ class Tank:
         pass
 
 
+    @property
+    def Ra(self):
+        # Descripcion
+        return (g * self.cryogen.beta_L * delta_T * self.l**3) / (self.cryogen.mu/self.cryogen.rho_L * self.alpha )
+    
+
+    def h_i_base(self, k_w):
+        g = self.cryogen.g
+        self.k_w = k_w
+        self.alpha = self.k_w/(self.cryogen.rho_l*self.cryogen.cp_L)
+        self.Pr = self.cryogen.Pr       
+        f1 = (1 + (0.492*self.Pr)**(9/16))**(-16/9)
+        # print(f'Raf1: {Ra*f1:.6e}')
+        # Heat emission at lower surface 
+        Nu_b = 0.6 * (self.Ra * f1)**(1/5)
+        # print(f'Nusselt number: {Nu_b:.3e}')
+        h_b = Nu_b * k_w / self.d_i 
+        print(f'Internal heat transfer coefficient at the tank base, h_b: {h_b:.3e}', 'Wm^-2K^-1')
+        return h_b
+        
+
+    
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True):  
         """Set separately tank heat transfer properties
         
@@ -684,7 +706,11 @@ class Tank:
         self.data['BOG'] = (self.data['B_L']
             + self.data['rho_V_avg'] * self.data['dV_L']
             - (self.V - self.data['V_L']) * self.data['drho_V_avg'])
-        
+
+        # Wall temperature raw
+        self.data['T_w_raw'] = self.sol.y[len(self.z_grid) + 1:, :]
+        self.data['t_raw'] = self.sol.t
+        self.data['T_V'] = T_v
 
         return
     

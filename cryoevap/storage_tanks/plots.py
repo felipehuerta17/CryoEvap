@@ -57,7 +57,6 @@ def plot_tv(tank, t_unit='s', hour = 0):
 
     plt.show()
 
-
 def plot_V_L(tank, unit='m3', t_unit='s'):
     '''
     Plots liquid volume
