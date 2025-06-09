@@ -311,7 +311,7 @@ def plot_Q_w(tank, unit = 'W', t_unit = 's'):
     # Extract evaporation and BOG rates and convert to kg/h
     # Visualise evaporation and boil-off gas rate in kg/h
     plt.figure(figsize=[7, 5])
-    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_L']*unit_conv[unit] , label=r'Heat flow from the enviroment to the wall, $\dot{Q}_{W,env}$', color = cmap(1/6))
+    plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_env_w']*unit_conv[unit] , label=r'Heat flow from the enviroment to the wall, $\dot{Q}_{W,env}$', color = cmap(1/6))
     plt.plot(tank.sol.t/t_dict[t_unit], tank.data['Q_w_L'] *unit_conv[unit], label=r'Heat flow from the wall to the ammonia, $\dot{Q}_{WL}$', color = cmap(5/6)) 
     plt.grid()
     plt.xlabel('Time / ' + t_unit)
