@@ -2,7 +2,7 @@
 import CoolProp.CoolProp as CP
 
 # Simpson's rule for integration with 2nd order accuracy
-from scipy.integrate import simps
+from scipy.integrate import simpson
 
 # Check potential nans
 import numpy as np
@@ -114,9 +114,9 @@ class Cryogen:
         
         # Compute average density on a unit-length grid
         if radius is None:
-            self.rho_V_avg =  simps(rho_V, z_grid)
+            self.rho_V_avg =  simpson(rho_V, z_grid)
         else:
-            self.rho_V_avg = simps(rho_V*radius, z_grid)/simps(radius,z_grid)
+            self.rho_V_avg = simpson(rho_V*radius, z_grid)/simpson(radius,z_grid)
         return
     
     def update_k_V(self, z_grid, T_V, radius = None):
@@ -143,9 +143,9 @@ class Cryogen:
 
         # Update average vapour density
         if radius is None:
-            self.k_V_avg = simps(k_V, z_grid)
+            self.k_V_avg = simpson(k_V, z_grid)
         else:
-            self.k_V_avg = simps(k_V*radius,z_grid)/simps(radius,z_grid)
+            self.k_V_avg = simpson(k_V*radius,z_grid)/simpson(radius,z_grid)
     
     def update_cp_V(self, z_grid, T_V, radius = None):
         '''
@@ -170,7 +170,7 @@ class Cryogen:
         if np.any(np.isnan(cp_V)) or np.any(np.isinf(cp_V)):
             return
         if radius is None:
-            self.cp_V_avg = simps(cp_V, z_grid)
+            self.cp_V_avg = simpson(cp_V, z_grid)
         else:
-            self.cp_V_avg = simps(cp_V*radius,z_grid)/simps(radius,z_grid)
+            self.cp_V_avg = simpson(cp_V*radius,z_grid)/simpson(radius,z_grid)
 
