@@ -48,14 +48,14 @@ class Tank:
                     'drho_V_avg': [], 'dV_L': []}
         pass
 
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = None):
+    def set_HeatTransProps(self, U_L, U_V, T_air, q_b_fixed=None, Q_roof=0, eta_w = None):
         """Set separately tank heat transfer properties
         
         Inputs:
             U_L: liquid phase overall heat transfer coefficient / W m^-2 K ^-1
             U_V: vapour phase overall heat transfer coefficient / W m^-2 K ^-1
             T_air: Temperature of the surroundings / K
-            Q_b_fixed: Fixed bottom heat ingress if specified 
+            q_b_fixed: Fixed bottom heat ingress if specified 
         
         Returns:
             None
@@ -76,7 +76,7 @@ class Tank:
 
         # In large scale applications, the tank bottom is heated by en
         # electric element at a constant rate to prevent ground freezing. 
-        self.Q_b_fixed = Q_b_fixed 
+        self.q_b_fixed = q_b_fixed 
 
         # Set wall heat partitioning
         # Automatic wall heat partitioning fraction if None
@@ -539,11 +539,11 @@ class Tank:
 
     @property
     def Q_b(self):
-        if self.Q_b_fixed is None:
-            "If Q_b_fixed is not set, calculate"
+        if self.q_b_fixed is None:
+            "If q_b_fixed is not set, calculate"
             return self.U_b * self.A_T * (self.T_air - self.cryogen.T_sat)
         else:
-            return self.Q_b_fixed
+            return self.q_b_fixed * self.A_T
     
     @property
     def tau(self):

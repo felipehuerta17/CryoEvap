@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 jax.config.update("jax_enable_x64", True)
 
 # Import polyfit function from CoolProp
-folder   = '../Cryoevap/cryogens/Coeffs/'
+folder   = '../cryoevap/cryogens/Coeffs/'
 cp_V_df  = pd.read_csv(folder + 'coeffs_cpV.csv')
 k_V_df   = pd.read_csv(folder + 'coeffs_kV.csv')
 rho_V_df = pd.read_csv(folder + 'coeffs_rhoV.csv')
@@ -91,7 +91,8 @@ class Opti_jax:
             'time_interval': tank.time_interval,
             "cp_V_poly":  jnp.array(cp_V_df[cryo.name].values, dtype=jnp.float64),
             "k_V_poly":   jnp.array(k_V_df[cryo.name].values, dtype=jnp.float64),
-            "rho_V_poly": jnp.array(rho_V_df[cryo.name].values, dtype=jnp.float64)
+            "rho_V_poly": jnp.array(rho_V_df[cryo.name].values, dtype=jnp.float64),
+            "q_b_fixed": tank.q_b_fixed
         }
     # Funciones internas adaptadas de tu código
     @staticmethod
@@ -153,7 +154,13 @@ class Opti_jax:
             Density evaluated at temperature T.
         """
         return jnp.polyval(p, T)
-
+    @staticmethod
+    def Q_b_fun(A_T, p):
+        if p["q_b_fixed"] is None:
+            "If q_b_fixed is not set, calculate"
+            return p["U_L"] * A_T * (p["T_air"] - p["T_sat"])
+        else:
+            return p["q_b_fixed"] * A_T
     @staticmethod
     @jax.jit
     def sys_isobaric_jax(t, y, args):
@@ -196,7 +203,7 @@ class Opti_jax:
 
         Q_Lin = p["U_L"] * A_L * (p["T_air"] - p["T_sat"])
         Q_VL  = k_V * A_T * (-3 * T_V[0] + 4 * T_V[1] - T_V[2]) / (2 * dz)
-        Q_b   = p["U_L"] * A_T * (p["T_air"] - p["T_sat"])
+        Q_b   = Opti_jax.Q_b_fun(A_T, p)
         Q_wi  = p["U_V"] * A_V * p["eta_w"] * (p["T_air"] - jnp.mean(T_V))
 
         BL_0  = (Q_Lin + Q_b + Q_wi) / (p["h_V"] - p["h_L"])
@@ -434,5 +441,83 @@ class Opti_jax:
         plt.title('Response Surface of Boil-Off Rate vs Aspect Ratio')
         plt.legend()
         plt.grid(True)
+
+        pass
+
+    def plot_surface_response_liquid_filling(self, a_array, lf_array, t_final):
+        """
+        Plots the response surface of the boil-off rate (BOR) as a function of the aspect ratio, for each
+        liquid filling provided.
+        
+        Parameters
+        ----------
+        a_array : jnp.ndarray
+            Array of aspect ratios for which to compute the boil-off rates.
+        lf_array : jnp.ndarray
+            Array of liquid filling for which to compute the tank.
+        t_final : float
+            Final simulation time in seconds, used to set the time for the evaporation simulation.
+        """
+        LF_og = self.params['LF']
+        opt_a_values = jnp.array([])
+        opt_bor_values = jnp.array([])
+        plt.figure()
+        for LF in lf_array:
+            self.tank.LF = LF
+            self.params = self.make_params(self, self.tank)
+            self.time = t_final
+            BOR_values = jax.vmap(lambda a: self.objective_function(jnp.log(a)))(a_array)
+            plt.plot(a_array, BOR_values, label=r'LF = ' + str(self.tank.LF) )
+            aspect_ratio = self.optimize_grid_with_refinement(verbose=False, t_final=self.time, coarse_samples=100, fine_samples=100,
+                                   aspect_ratio_min=0.2, aspect_ratio_max=3, refinement_window=0.1)
+            optimal_BOR = self.objective_function(jnp.log(aspect_ratio))
+            opt_a_values = jnp.append(opt_a_values, aspect_ratio)
+            opt_bor_values = jnp.append(opt_bor_values, optimal_BOR)
+        print(f"optimal Aspect Ratio: {opt_a_values}")
+        print(f"optimal BOR: {opt_bor_values}")
+        plt.plot(opt_a_values, opt_bor_values, color='red', label='optimal values',linestyle='--')
+        plt.xlabel('Aspect Ratio')
+        plt.ylabel('Boil-Off Rate (BOR)')
+        plt.title('Response Surface of Boil-Off Rate vs Aspect Ratio | t=' + str(t_final/3600) + ' h')
+        plt.grid(True)
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.axis('tight')
+        self.tank.LF = LF_og
+        self.params = self.make_params(self, self.tank)
+        return plt.show()
+    
+    def plot_surface_response_bottom_heat(self, q_b_array, t_final):
+        """
+        Plots the response surface of the optimized aspect ratio as a function of the bottom heat flux.
+        
+        Parameters
+        ----------
+        q_b_array : jnp.ndarray
+            Array of bottom heat fluxes for which to compute the boil-off rates.
+        t_final : float
+            Final simulation time in seconds, used to set the time for the evaporation simulation.
+        """
+        # Redefinir el tanke para cada q_b
+        q_b_og = self.params['q_b_fixed']
+        a_values = jnp.array([])
+        self.time = t_final
+        for q_b in q_b_array:
+            self.tank.q_b_fixed = q_b
+            self.params = self.make_params(self, self.tank)
+        # calcular el optimo para cada q_b
+        # plotear
+            optimal_aspect_ratio = self.optimize_grid_with_refinement(verbose=False, t_final=720*3600, coarse_samples=100, fine_samples=100,
+                                   aspect_ratio_min=0.2, aspect_ratio_max=3, refinement_window=0.1)
+            a_values = jnp.append(a_values, optimal_aspect_ratio)
+        plt.plot(q_b_array, a_values)
+        plt.xlabel('Heat flux | w/m^2')
+        plt.ylabel('Aspect Ratio')
+        plt.title('Response Surface of optimized Aspect Ratio vs Heat Flux | t=' + str(t_final/3600) + ' h')
+        plt.grid(True)
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.axis('tight')
+        self.tank.q_b_fixed = q_b_og
+        self.params = self.make_params(self, self.tank)
+        return plt.show()
 
         pass
