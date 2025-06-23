@@ -17,6 +17,9 @@ from scipy.interpolate import interp1d
 # Plotting routines
 from . import plots
 
+# Datetime module for time management
+import datetime
+
 class Tank:
     """ Class to be used as a container for the
     evaporation of pure cryogens"""
@@ -29,10 +32,13 @@ class Tank:
         simulation results.
         
         Inputs:
+        -------
             d_i : Internal diameter of the tank [m].
             d_o : External diameter of the tank [m].
             V   : Volume of the tank [m^3].
-            LF  : Initial liquid filling fraction (default is 0.97).
+            LF  : Initial liquid filling fraction (default is 0.97).}
+
+        --------
         """
 
         # Compulsory parameters
@@ -60,83 +66,104 @@ class Tank:
         self.data = {'Time' : [], 'Tv_avg' : [], 'rho_V_avg': [], 'Q_VL'      : [],
                      'Q_L'  : [], 'Q_V'    : [], 'Q_Vw'     : [], 'Q_env_w'   : [],
                      'Q_w_L': [], 'Q_tot'  : [], 'V_L'      : [], 'B_L'       : [],
-                     'BOG'  : [], 'dV_L'   : [], 'Tw_avg'   : [], 'drho_V_avg': []}
+                     'BOG'  : [], 'dV_L'   : [], 'Tw_avg'   : [], 'drho_V_avg': [],
+                     'T_w_raw':[], 'T_V_raw': [],}
         pass
 
-    def set_EnvironmentalProps(self, T_avg_day = None, T_range_day = None, freq_day = 2*np.pi/(24*3600), h_env = 15,
-                               T_avg_annual = None, T_range_annual = None, freq_annual = 2*np.pi/(365*24*3600)):
-        """Set separately environmental temperature and properties
+    def set_EnvironmentalProps(self, T_avg_day = None, T_range_day = None, h_env = 15, p_anual = None, start_date = None):
+        """
+        Set environmental temperature and properties.
 
-        If you want to set the environmental temperature for the day, set T_avg_day, T_range_day and freq_day.
-        If you want to set the environmental temperature for the annual period, set T_avg_annual, T_range_annual and freq_annual.
-        If you want to set both, set all the parameters (T_range_day, freq_day, T_avg_annual, T_range_annual, freq_annual). Notice that T_avg_day is not necessary.
+        You can set a daily temperature cycle (T_avg_day, T_range_day), an annual temperature profile (p_anual), or both.
+        - For a daily cycle, provide T_avg_day (K) and T_range_day (K).
+        - For an annual profile, provide p_anual as a list of polynomial coefficients [a0, a1, a2] for temperature as a function of day of year.
+        - To combine both, provide both daily and annual parameters.
+        - Optionally, set h_env (W/m^2K) and start_date (YYYY-MM-DD) for annual phase alignment.
 
         Inputs:
-            T_avg_day   : average environmental temperature / K
-            T_range_day : range of temperature during the period (T_max - T_min) / K
-            freq_day    : frequency of the temperature between the maximum and minimum temperature / Hz
-            h_env       : convective heat transfer coefficient / W/m^2K
-            T_avg_annual: average environmental temperature / K
-            T_range_annual: range of temperature during the period (T_max - T_min) / K
-            freq_annual : frequency of the temperature between the maximum and minimum temperature / Hz       
-        Returns:
-            None
-        """ 
-        # Set environmental temperature properties for the day
-        self.T_env_avg_day = T_avg_day      # [K]
-        self.range_env_day = T_range_day    # [K]
-        self.freq_env_day  = freq_day       # [Hz]
-        self.T_air_day     = T_avg_day      # [K]
-        self.h_env         = h_env      # [W/m^2K]
+        -------
+            T_avg_day   : Average daily environmental temperature [K]
+            T_range_day : Daily temperature range (T_max - T_min) [K]
+            h_env       : Convective heat transfer coefficient [W/m^2K]
+            p_anual     : Polynomial coefficients [a0, a1, a2] for annual temperature profile. 
+                          The first coefficient a0 is the quadratic term, a1 is the linear term, and a2 is the constant term (array).
+            start_date  : Start date for simulation (YYYY-MM-DD) for annual phase alignment (string)
 
-        # Set environmental temperature properties for the annual period
-        self.T_env_avg_annual = T_avg_annual
-        self.range_env_annual = T_range_annual
-        self.freq_env_annual  = freq_annual
+        Returns:
+        --------
+            None
+
+        """
+        # Set environmental temperature properties for the day
+        self.T_env_avg_day = T_avg_day          # [K]
+        self.range_env_day = T_range_day        # [K]
+        self.freq_env_day  = 2*np.pi/(24*3600)  # [Hz]
+        self.poly_annual   = p_anual            # [a0, a1, a2] coefficients for the annual temperature polynomial
+        self.h_env         = h_env              # [W/m^2K]
+        self.start_date    = start_date         # [datetime] Start date of the simulation
 
         # Case 1: Just day temperature is set
-        if T_avg_annual is None:
+        if p_anual is None:
             self.T_env  = lambda t: self.T_env_avg_day + 0.5*self.range_env_day*np.sin(self.freq_env_day*t)
-            self.dT_env = lambda t: 0.5*self.range_env_day*np.cos(self.freq_env_day*t)
 
         # Case 2: Just annual temperature is set
-        elif T_range_day is None:
-            self.T_env  = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t)
-            self.dT_env = lambda t: 0.5*self.range_env_annual*np.cos(self.freq_env_annual*t)
+        elif T_range_day is None or T_avg_day is None:
+            
+            if self.start_date is None:
+                self.T_env  = lambda t: 273.15 + (self.poly_annual[0]*((t/86400) % 365)**2 + self.poly_annual[1]*((t/86400) % 365) + self.poly_annual[2])
+
+            else:
+                reference_dt   = datetime.datetime(2024, 6, 20)
+                start_date_dt  = datetime.datetime.strptime(self.start_date, '%Y-%m-%d')
+                days_offset    = (start_date_dt - reference_dt).days
+                self.T_env     = lambda t: 273.15 + (self.poly_annual[0]*(((t/86400) - days_offset) % 365)**2 + self.poly_annual[1]*(((t/86400) - days_offset) % 365) + self.poly_annual[2])
 
         # Case 3: Both day and annual temperatures are set
         else:
-            self.T_env  = lambda t: self.T_env_avg_annual + 0.5*self.range_env_annual*np.sin(self.freq_env_annual*t) +  0.5*self.range_env_day*np.sin(self.freq_env_day*t)  
-            self.dT_env = lambda t: 0.5*self.range_env_annual*np.cos(self.freq_env_annual*t) +  0.5*self.range_env_day*np.cos(self.freq_env_day*t)
+            if self.start_date is None:
+                self.T_env  = lambda t: 273.15 +(self.poly_annual[0]*((t/86400) % 365)**2 + self.poly_annual[1]*((t/86400) % 365) + self.poly_annual[2]) + 0.5*self.range_env_day*np.sin(self.freq_env_day*t)  
+            else:
+                reference_dt   = datetime.datetime(2024, 6, 20)
+                start_date_dt  = datetime.datetime.strptime(self.start_date, '%Y-%m-%d')
+                days_offset    = (start_date_dt - reference_dt).days
+                self.T_env     = lambda t: 273.15 + (self.poly_annual[0]*(((t/86400) - days_offset) % 365)**2 + self.poly_annual[1]*(((t/86400) - days_offset) % 365) + self.poly_annual[2]) + 0.5*self.range_env_day*np.sin(self.freq_env_day*t)
+        
+        # Fix the initial wall temperature to the environmental temperature
+        if self.T_init:
+            self.T_w = np.ones(len(self.r_grid)) * self.T_env(0)
+
         pass
 
 
-    @property
-    def Ra(self):
-        # Descripcion
-        return (g * self.cryogen.beta_L * delta_T * self.l**3) / (self.cryogen.mu/self.cryogen.rho_L * self.alpha )
+
+    # @property
+    # def Ra(self):
+    #     # Descripcion
+    #     return (g * self.cryogen.beta_L * delta_T * self.l**3) / (self.cryogen.mu/self.cryogen.rho_L * self.alpha )
     
 
-    def h_i_base(self, k_w):
-        g = self.cryogen.g
-        self.k_w = k_w
-        self.alpha = self.k_w/(self.cryogen.rho_l*self.cryogen.cp_L)
-        self.Pr = self.cryogen.Pr       
-        f1 = (1 + (0.492*self.Pr)**(9/16))**(-16/9)
-        # print(f'Raf1: {Ra*f1:.6e}')
-        # Heat emission at lower surface 
-        Nu_b = 0.6 * (self.Ra * f1)**(1/5)
-        # print(f'Nusselt number: {Nu_b:.3e}')
-        h_b = Nu_b * k_w / self.d_i 
-        print(f'Internal heat transfer coefficient at the tank base, h_b: {h_b:.3e}', 'Wm^-2K^-1')
-        return h_b
+    # def h_i_base(self, k_w):
+    #     g = self.cryogen.g
+    #     self.k_w = k_w
+    #     self.alpha = self.k_w/(self.cryogen.rho_l*self.cryogen.cp_L)
+    #     self.Pr = self.cryogen.Pr       
+    #     f1 = (1 + (0.492*self.Pr)**(9/16))**(-16/9)
+    #     # print(f'Raf1: {Ra*f1:.6e}')
+    #     # Heat emission at lower surface 
+    #     Nu_b = 0.6 * (self.Ra * f1)**(1/5)
+    #     # print(f'Nusselt number: {Nu_b:.3e}')
+    #     h_b = Nu_b * k_w / self.d_i 
+    #     print(f'Internal heat transfer coefficient at the tank base, h_b: {h_b:.3e}', 'Wm^-2K^-1')
+    #     return h_b
         
 
     
     def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True):  
-        """Set separately tank heat transfer properties
+        """
+        Set separately tank heat transfer properties
         
         Inputs:
+        -------
             U_L       : liquid phase overall heat transfer coefficient / W m^-2 K ^-1
             U_V       : vapour phase overall heat transfer coefficient / W m^-2 K ^-1
             T_air     : Temperature of the surroundings / K
@@ -150,7 +177,9 @@ class Tank:
             T_init    : Set initial wall temperature as environmental temperature / True or False
         
         Returns:
+        --------
             None
+
         """
         # Tank parameters
         self.U_L     = U_L  
@@ -164,6 +193,7 @@ class Tank:
         self.rho_w   = rho_w
         self.cp_w    = cp_w
         self.alpha_w = k_w/(rho_w*cp_w)
+        self.T_init  = T_init
 
         # Environmental property
         self.h_env = 0
@@ -183,7 +213,7 @@ class Tank:
         self.eta_w = eta_w   
 
         # Set initial wall temperature
-        if T_init:
+        if self.T_init:
             self.T_w = np.ones(len(self.r_grid)) * T_air
         else:
             self.T_w = np.ones(len(self.r_grid)) * self.cryogen.T_sat
