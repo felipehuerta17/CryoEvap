@@ -709,8 +709,8 @@ class Tank:
 
         # Wall temperature raw
         self.data['T_w_raw'] = self.sol.y[len(self.z_grid) + 1:, :]
-        self.data['t_raw'] = self.sol.t
-        self.data['T_V'] = T_v
+        self.data['t_raw']   = self.sol.t
+        self.data['T_V_raw'] = self.sol.y[1:len(self.z_grid) + 1, :]
 
         return
     
