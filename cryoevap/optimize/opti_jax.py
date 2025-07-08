@@ -622,7 +622,7 @@ class Opti_jax:
             y0=IC,
             args=(thermal_aspect_ratio, self.params),
             saveat=SaveAt(ts=jnp.arange(0, self.time + 1, self.params['time_interval'])),
-            max_steps=1000000,
+            max_steps=10000000,
             stepsize_controller=PIDController(rtol=1e-8, atol=1e-8),
             adjoint=BacksolveAdjoint()
         )
