@@ -750,33 +750,24 @@ class Opti_jax:
         """
         self.time = t_final
         BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
-        fig, ax1 = plt.subplots()
 
-        # Primer eje Y (izquierda)
-        ax1.set_xlabel('Aspect Ratio')
-        ax1.set_ylabel('Boil-Off Rate (BOR)', color='tab:blue')
-        ax1.plot(a_array, BOR_values, color='tab:blue', label='t_final = ' + str(t_final/3600) + ' h')
-        ax1.tick_params(axis='y', labelcolor='tab:blue')
+        cmap = plt.get_cmap('inferno', 5)
 
-        # Segundo eje Y (derecha)
-        ax2 = ax1.twinx()
-        ax2.set_ylabel('Thermal aspect ratio', color='tab:orange')
-        ax2.plot(a_array, thermal_a_array, color='tab:orange', label=r'thermal aspect ratio t_final = ' + str(t_final/3600) + ' h')
-        ax2.tick_params(axis='y', labelcolor='tab:orange')
-
-        fig.tight_layout()
-        plt.title("Response Surface of Aspect Ratio vs Boil-Off Rate, Thermal Aspect Ratio")
-        plt.legend()
-        plt.grid(True)
+        # plt.figure( figsize = (6,5), dpi = 300)
+        plt.plot(a_array, BOR_values, label='Geometric', color=cmap(1))
+        plt.plot(thermal_a_array, BOR_values, label='Thermal', color=cmap(3))
+        plt.xlabel('Aspect ratio')
+        plt.ylabel('Boil-off rate (BOR)')
+        plt.legend(loc = "lower right")
+        plt.title('Boil-off Rate Surface Response vs. Aspect Ratios')
         
-        pass
-
+        return a_array, thermal_a_array, BOR_values
 
     def plot_surface_response_thermal_aspect_ratio_liquid_filling(self, a_array, lf_array, t_final):
         """
         Plots the response surface of the boil-off rate (BOR) as a function of the thermal aspect ratio, for each
         liquid filling provided.
-        
+
         Parameters
         ----------
         thermal_a_array : jnp.ndarray
@@ -786,13 +777,13 @@ class Opti_jax:
         t_final : float
             Final simulation time in seconds, used to set the time for the evaporation simulation.
         """
+
         LF_og = self.params['LF']
         opt_a_values = jnp.array([])
         opt_bor_values = jnp.array([])
         opt_thermal_a_values = jnp.array([])
-        fig1, ax1 = plt.subplots()
-        fig2, ax2 = plt.subplots()
-        #ax2 = ax1.twinx()
+        fig1, ax1 = plt.subplots(dpi = 300)
+        fig2, ax2 = plt.subplots(dpi = 300)
 
         ax1.set_xlabel('Aspect Ratio')
         ax1.set_ylabel('Boil-Off Rate (BOR)')
@@ -800,31 +791,40 @@ class Opti_jax:
         ax2.set_xlabel('Aspect Ratio')
         ax2.set_ylabel('Thermal aspect ratio')
 
-        for LF in lf_array:
+        # Use inferno colormap
+        cmap = plt.get_cmap('inferno', len(lf_array) + 1)
+        colors = [cmap(i) for i in range(len(lf_array))]
+
+        for idx, LF in enumerate(lf_array):
             self.tank.LF = LF
-            self.params = self.make_params(self, self.tank)
-            self.time = t_final
+            self.params  = self.make_params(self, self.tank)
+            self.time    = t_final
             BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
-            ax1.plot(a_array, BOR_values, label=r'LF = ' + str(self.tank.LF) )
-            ax2.plot(thermal_a_array, BOR_values, label=r'LF = ' + str(self.tank.LF) )
-            optimal_aspect_ratio, optimal_thermal_aspect_ratio, min_BOR = self.thermal_aspect_ratio_optimize_grid_with_refinement(verbose=False, t_final=self.time, coarse_samples=100, fine_samples=1000,
-                                   aspect_ratio_min=0.2, aspect_ratio_max=3, refinement_window=0.1)
-            opt_a_values = jnp.append(opt_a_values, optimal_aspect_ratio)
-            opt_bor_values = jnp.append(opt_bor_values, min_BOR)
+
+            color = colors[idx]
+            ax1.plot(a_array, BOR_values, label=f'LF = {self.tank.LF:.2f}', color=color)
+            ax2.plot(thermal_a_array, BOR_values, label=f'LF = {self.tank.LF:.2f}', color=color)
+
+            optimal_aspect_ratio, optimal_thermal_aspect_ratio, min_BOR = self.thermal_aspect_ratio_optimize_grid_with_refinement(
+                verbose=False, t_final=self.time, coarse_samples=100, fine_samples=1000,
+                aspect_ratio_min=0.2, aspect_ratio_max=3, refinement_window=0.1)
+            opt_a_values    = jnp.append(opt_a_values, optimal_aspect_ratio)
+            opt_bor_values  = jnp.append(opt_bor_values, min_BOR)
             opt_thermal_a_values = jnp.append(opt_thermal_a_values, optimal_thermal_aspect_ratio)
 
         print(f"optimal Aspect Ratio: {opt_a_values}")
         print(f"optimal Thermal Aspect Ratio: {opt_thermal_a_values}")
         print(f"optimal BOR: {opt_bor_values}")
 
-        ax1.plot(opt_a_values, opt_bor_values, color='red', label='optimal values',linestyle='--')
-        ax1.set_title('Response Surface of Aspect Ratio vs Boil-Off Rate | t=' + str(t_final/3600) + ' h')
+        # Plot optimal points in red
+        ax1.plot(opt_a_values, opt_bor_values, color='red', label='Optimal values', linestyle='--')
+        ax1.set_title(f'Response Surface of Boil-off Rate | t= {int(t_final/3600)} h')
         ax1.grid(True)
         ax1.legend(loc='center left', bbox_to_anchor=(1.1, 0.5))
         ax1.axis('tight')
 
-        ax2.plot(opt_thermal_a_values,opt_bor_values, color='red', label='optimal values',linestyle='--')
-        ax2.set_title('Response Surface of Thermal Aspect Ratio vs Boil-off Rate | t=' + str(t_final/3600) + ' h')
+        ax2.plot(opt_thermal_a_values, opt_bor_values, color='red', label='Optimal values', linestyle='--')
+        ax2.set_title(f'Response Surface of Boil-off Rate | t= {int(t_final/3600)} h')
         ax2.grid(True)
         ax2.legend(loc='center left', bbox_to_anchor=(1.1, 0.5))
         ax2.axis('tight')
