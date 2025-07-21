@@ -737,7 +737,7 @@ class Opti_jax:
         
         return (optimal_aspect_ratio, optimal_thermal_aspect_ratio, min_bor)
 
-    def plot_thermal_aspect_ratio_surface_response(self, a_array, t_final):
+    def plot_thermal_aspect_ratio_surface_response(self, a_array, t_final, LF_array):
         """
         Plots the response surface of the boil-off rate (BOR) as a function of the thermal aspect ratio.
         
@@ -749,19 +749,27 @@ class Opti_jax:
             Final simulation time in seconds, used to set the time for the evaporation simulation.
         """
         self.time = t_final
-        BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
 
-        cmap = plt.get_cmap('inferno', 5)
+        cmap = plt.get_cmap('inferno', len(LF_array) + 1)
 
-        # plt.figure( figsize = (6,5), dpi = 300)
-        plt.plot(a_array, BOR_values, label='Geometric', color=cmap(1))
-        plt.plot(thermal_a_array, BOR_values, label='Thermal', color=cmap(3))
-        plt.xlabel('Aspect ratio')
-        plt.ylabel('Boil-off rate (BOR)')
-        plt.legend(loc = "lower right")
-        plt.title('Boil-off Rate Surface Response vs. Aspect Ratios')
+        for i, LF in enumerate(LF_array):
+            self.tank.LF = LF
+            self.params = self.make_params(self, self.tank)
+            BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
+
+
+            # plt.figure( figsize = (6,5), dpi = 300)
+            plt.plot(a_array, thermal_a_array, color = cmap(i), label=f'LF = {LF:.2f}')
+            # plt.plot(thermal_a_array, BOR_values, label='Thermal', color=cmap(3))
         
-        return a_array, thermal_a_array, BOR_values
+        
+        plt.xlabel('Geometrical Aspect ratio')
+        plt.ylabel('Thermal Aspect Ratio')
+        
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.title('Surface Response of Thermal vs Geometrical Aspect Ratio')
+            
+        pass
 
     def plot_surface_response_thermal_aspect_ratio_liquid_filling(self, a_array, lf_array, t_final):
         """
