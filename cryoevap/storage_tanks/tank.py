@@ -67,7 +67,7 @@ class Tank:
                      'Q_L'  : [], 'Q_V'    : [], 'Q_Vw'     : [], 'Q_env_w'   : [],
                      'Q_w_L': [], 'Q_tot'  : [], 'V_L'      : [], 'B_L'       : [],
                      'BOG'  : [], 'dV_L'   : [], 'Tw_avg'   : [], 'drho_V_avg': [],
-                     'T_w_raw':[], 'T_V_raw': [],}
+                     'T_w_raw':[], 'T_V_raw': [], 'Q_b': []}
         pass
 
     def set_EnvironmentalProps(self, T_avg_day = None, T_range_day = None, h_env = 15, p_anual = None, start_date = None):
@@ -721,7 +721,8 @@ class Tank:
         self.data['Q_Vw']     = np.array(Q_V) * self.eta_w
         self.data['Q_env_w']  = np.array(Q_env_w)
         self.data['Q_w_L']    = np.array(Q_L_in) * -1
-        self.data['Q_tot']    = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  self.Q_b(self.sol.t)
+        self.data['Q_b']      = self.Q_b(self.sol.t)
+        self.data['Q_tot']    = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  self.data['Q_b']
         
         # Evaporation rate in kg/s
         self.data['B_L'] = np.array(self.evap_rate(self.sol.t))
