@@ -19,7 +19,7 @@ with open('Data/large_tank_data_LF95_3weeks_wo_wall.pkl', 'rb') as f:
     data_LF95_wo_wall = pickle.load(f)
 
 # Create figure with subplots
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=200)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), dpi=200)
 
 # First subplot - BOG Temperature
 cmap = plt.get_cmap('inferno', 4)
