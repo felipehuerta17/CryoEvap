@@ -2,7 +2,11 @@
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+
+fontsize_label  = 14
+fontsize_ticks  = 14
+fontsize_legend = 14
+
 
 # Read pickle file
 with open('Data/large_tank_data_LF95_3weeks.pkl', 'rb') as f:
@@ -10,7 +14,6 @@ with open('Data/large_tank_data_LF95_3weeks.pkl', 'rb') as f:
 
 with open('Data/large_tank_data_LF95_3weeks_wo_wall.pkl', 'rb') as f:
     data_LF95_wo_wall = pickle.load(f)
-
 
 # Create figure with subplots
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), dpi=300)
@@ -34,10 +37,10 @@ ax1.plot(data_LF95_wo_wall['Time']/3600, Q_b_no_wall_vec/1000,'--',
 
 ax1.set_xlim(0, 500)
 ax1.set_ylim(0, 12)
-ax1.set_ylabel(r'Heat Transfer Rate / kW', fontsize=14)
-ax1.set_xlabel('Time / h', fontsize=14)
-ax1.tick_params(labelsize=12)
-ax1.legend(fontsize=12)
+ax1.set_ylabel(r'Heat Transfer Rate / kW', fontsize=fontsize_label)
+ax1.set_xlabel('Time / h', fontsize=fontsize_label)
+ax1.tick_params(labelsize=fontsize_ticks)
+ax1.legend(fontsize=fontsize_legend)
 
 # Second subplot - Wall and Vapor-Liquid Interface heat transfer rates
 ax2.plot(data_LF95['Time']/3600, data_LF95['Q_Vw']/1000, label=r'$\dot{Q}_{\text{Wi}}$', color=cmap(3))
@@ -49,11 +52,11 @@ ax2.plot(data_LF95_wo_wall['Time']/3600, data_LF95_wo_wall['Q_VL']/1000,'--',
          label=r'$\dot{Q}_{\text{VL}}$ (no wall model)', color=cmap(1))
 
 ax2.set_xlim(0, 500)
-# ax2.set_ylim(0, 0.25)
-ax2.set_ylabel(r'Heat Transfer Rate / kW', fontsize=14)
-ax2.set_xlabel('Time / h', fontsize=14)
-ax2.tick_params(labelsize=12)
-ax2.legend(fontsize=12)
+ax2.set_ylim(0, 0.25)
+ax2.set_ylabel(r'Heat Transfer Rate / kW', fontsize=fontsize_label)
+ax2.set_xlabel('Time / h', fontsize=fontsize_label)
+ax2.tick_params(labelsize=fontsize_ticks)
+ax2.legend(fontsize=fontsize_legend)
 
 # Adjust layout to prevent overlap
 plt.tight_layout()

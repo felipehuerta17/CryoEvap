@@ -1,7 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
 import pickle as pkl
+
+fontsize_label = 14
+fontsize_ticks = 14
+fontsize_legend = 14
 
 with open('Data/large_tank_LF95_transient.pkl', 'rb') as f:
     large_tank = pkl.load(f)
@@ -19,10 +22,10 @@ plt.figure(figsize= (8,6), dpi=200)
 for j, i in enumerate(time_tau):
     plt.plot(r, large_tank['T_w_raw'][:, i], label=fr't$^*$ = {i/10:.1f}', color = cmap(j))
 
-plt.legend(fontsize = 12)
-plt.xlabel('Radius / m', fontsize=14)
-plt.ylabel('Temperature / K', fontsize=14)
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
+plt.legend(fontsize = fontsize_legend)
+plt.xlabel('Radius / m', fontsize=fontsize_label)
+plt.ylabel('Temperature / K', fontsize=fontsize_label)
+plt.xticks(fontsize=fontsize_ticks)
+plt.yticks(fontsize=fontsize_ticks)
 
 plt.savefig('Figures/Fig_2.svg', bbox_inches='tight', dpi=200)

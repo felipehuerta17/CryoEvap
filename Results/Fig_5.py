@@ -1,7 +1,10 @@
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+
+fontsize_label  = 14
+fontsize_ticks  = 14
+fontsize_legend = 14
 
 # Read pickle file
 with open('Data/large_tank_data_LF95_3weeks.pkl', 'rb') as f:
@@ -18,10 +21,10 @@ plt.plot(data_LF95['Time']/3600, data_LF95['Tw_avg'], label=r'$T_{\text{W,avg}}$
 plt.plot(data_LF95['Time']/3600, data_LF95['T_BOG'], label=r'$T_{\text{BOG}}$', color=cmap(3))
 plt.plot(data_LF95['Time']/3600, data_LF95['Tv_avg'], label=r'$T_{\text{V,avg}}$', color=cmap(4))
 
-plt.xlabel('Time / h', fontsize = 14)
-plt.xticks(fontsize = 12)
+plt.xlabel('Time / h', fontsize=fontsize_label)
+plt.xticks(fontsize=fontsize_ticks)
 plt.xlim(-1, 180)
-plt.ylabel(r'Temperature / K', fontsize = 14)
-plt.yticks(fontsize = 12)
-plt.legend(loc =(1.05, 0.77), fontsize = 12)
+plt.ylabel(r'Temperature / K', fontsize=fontsize_label)
+plt.yticks(fontsize=fontsize_ticks)
+plt.legend(loc=(1.05, 0.735), fontsize=fontsize_legend)
 plt.savefig('Figures/Fig_5.svg', dpi=300, bbox_inches='tight')
