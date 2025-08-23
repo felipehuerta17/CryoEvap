@@ -67,7 +67,7 @@ class Tank:
                      'Q_L'  : [], 'Q_V'    : [], 'Q_Vw'     : [], 'Q_env_w'   : [],
                      'Q_w_L': [], 'Q_tot'  : [], 'V_L'      : [], 'B_L'       : [],
                      'BOG'  : [], 'dV_L'   : [], 'Tw_avg'   : [], 'drho_V_avg': [],
-                     'T_w_raw':[], 'T_V_raw': [], 'Q_b': []}
+                     'T_w_raw':[], 'T_V_raw': [], 'Q_b'     : [], 'Q_L_inst'  : []}
         pass
 
     def set_EnvironmentalProps(self, T_avg_day = None, T_range_day = None, h_env = 15, p_anual = None, start_date = None):
@@ -464,6 +464,10 @@ class Tank:
 
         return - self.k_w * self.A_L * dTdr_i
 
+    def Q_L_in_instant(self, t):
+        """ Liquid heat ingress through the walls in W (instant) """
+        return self.U_L * self.A_L * (self.T_env(t) - self.cryogen.T_sat)
+
     def Q_w_i(self, t):
         """ Heat transferred directly to the vapour-liquid interface
         through the tank wall in contact to the vapour / W """
@@ -723,6 +727,7 @@ class Tank:
         self.data['Q_w_L']    = np.array(Q_L_in) * -1
         self.data['Q_b']      = self.Q_b(self.sol.t)
         self.data['Q_tot']    = self.data['Q_L'] + self.data['Q_Vw'] + self.data['Q_VL'] +  self.data['Q_b']
+        self.data['Q_L_inst'] = self.Q_L_in_instant(self.sol.t)
         
         # Evaporation rate in kg/s
         self.data['B_L'] = np.array(self.evap_rate(self.sol.t))
