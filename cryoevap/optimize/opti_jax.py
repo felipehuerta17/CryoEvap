@@ -3,14 +3,24 @@ import jax.numpy as jnp
 from jax.example_libraries import optimizers
 from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController, BacksolveAdjoint
 import pandas as pd
+import os
+import subprocess
 import matplotlib.pyplot as plt
 jax.config.update("jax_enable_x64", True)
 
 # Import polyfit function from CoolProp
 folder   = '../cryoevap/cryogens/Coeffs/'
-cp_V_df  = pd.read_csv(folder + 'coeffs_cpV.csv')
-k_V_df   = pd.read_csv(folder + 'coeffs_kV.csv')
-rho_V_df = pd.read_csv(folder + 'coeffs_rhoV.csv')
+
+try:
+    cp_V_df  = pd.read_csv(folder + 'coeffs_cpV.csv')
+    k_V_df   = pd.read_csv(folder + 'coeffs_kV.csv')
+    rho_V_df = pd.read_csv(folder + 'coeffs_rhoV.csv')
+except FileNotFoundError:
+    fitting_script = os.path.join(folder, 'Coolprop_fitting.py')
+    subprocess.run(['python', fitting_script], check=True)
+    cp_V_df  = pd.read_csv(folder + 'coeffs_cpV.csv')
+    k_V_df   = pd.read_csv(folder + 'coeffs_kV.csv')
+    rho_V_df = pd.read_csv(folder + 'coeffs_rhoV.csv')
 
 class Opti_jax:
     """
