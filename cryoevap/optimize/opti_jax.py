@@ -104,7 +104,7 @@ class Opti_jax:
             "rho_V_poly": jnp.array(rho_V_df[cryo.name].values, dtype=jnp.float64),
             "q_b_fixed": tank.q_b_fixed
         }
-    # Funciones internas adaptadas de tu código
+
     @staticmethod
     @jax.jit
     def cp_V_fun(T, p):
@@ -164,6 +164,7 @@ class Opti_jax:
             Density evaluated at temperature T.
         """
         return jnp.polyval(p, T)
+   
     @staticmethod
     def q_b_fun(p):
         if p["q_b_fixed"] is None:
@@ -171,6 +172,11 @@ class Opti_jax:
             return p["U_L"] * (p["T_air"] - p["T_sat"])
         else:
             return p["q_b_fixed"]
+    
+    #####################################
+    # Geometric Aspect Ratio Optimization
+    #####################################
+
     @staticmethod
     @jax.jit
     def sys_isobaric_jax(t, y, args):
@@ -315,58 +321,6 @@ class Opti_jax:
         t     = sol.ts
         return self.BOR(V_L, t)
 
-    def optimize(self, verbose=True, t_final = 3600*24, max_iter = 100, lr = 1e-1, x0 = 1.0, lr_2 = 1e-3, iter_decay_lr = 100 ):
-        """
-        Performs gradient-based optimization to find the aspect ratio that minimizes boil-off rate (BOR).
-        Save the loss history, optimal state and optimal aspect ratio in the class attributes.
-
-        Parameters
-        ----------
-        verbose : bool, optional
-            If True, prints optimization progress. Default is True.
-        t_final : float, optional
-            Final simulation time in seconds. Default is 3600*24 (one day).
-        max_iter : int, optional
-            Maximum number of optimization iterations. Default is 100.
-        lr : float, optional
-            Learning rate for the optimizer. Default is 1e-1.
-        x0 : float, optional
-            Initial guess for the aspect ratio, defined as a logarithmic scale. Default is 1.0.
-        
-        Returns
-        -------
-        float
-            The optimal aspect ratio found during the optimization process.
-        
-        """
-        train_loss = []
-
-        self.time = t_final
-
-        # Inicializar optimizador para el parámetro aspect_ratio (escalares float64)
-        opt_init, opt_update, get_params = optimizers.adam(lr)
-        opt_state = opt_init(jnp.array(x0, dtype=jnp.float64))  # valor inicial aspect ratio = 1.0
-
-        for i in range(max_iter):
-            params          = get_params(opt_state)
-            loss_val, grads = jax.value_and_grad(self.objective_function)(params)
-            opt_state       = opt_update(i, grads, opt_state)
-            train_loss.append(loss_val)
-
-            if verbose:
-                print(f"Iter {i}, Loss {loss_val:.6e}, Param {float(jnp.exp(params)):.4g}")
-
-            if i == iter_decay_lr:
-                opt_init, opt_update, get_params = optimizers.adam(lr_2)
-                opt_state = opt_init(get_params(opt_state))
-
-
-
-        self.opt_state            = opt_state
-        self.optimal_aspect_ratio = jnp.exp(get_params(opt_state))       
-        self.train_loss           = train_loss
-        return self.optimal_aspect_ratio
-
     def optimize_grid_with_refinement(self, verbose=True, t_final=3600*24, 
                                     coarse_samples=100, fine_samples=100,
                                     aspect_ratio_min=0.02, aspect_ratio_max=10.0, 
@@ -414,22 +368,6 @@ class Opti_jax:
             print(f"Minimum BOR: {min_bor:.6e}")
         
         return optimal_aspect_ratio
-
-
-    def plot_loss_history(self):
-        """
-        Plots the convergence history of the optimization process.
-        This method generates a log-log plot of the training loss (Boil-Off Rate) over iterations.
-        """
-        plt.plot(self.train_loss)
-        plt.xlabel('Iteration')
-        plt.ylabel('BOR')
-        plt.title('Training Loss History')
-        plt.xscale('log')
-        plt.yscale('log')
-        plt.grid(True)
-
-        pass
 
     def plot_surface_response(self, a_array, t_final):
         """
@@ -530,23 +468,10 @@ class Opti_jax:
         self.params = self.make_params(self, self.tank)
         return plt.show()
 
-    def plot_thermal_aspect_ratio(self, thermal_a_array, log = False):
-        a_array = []
-        p = self.params
-        T_V = jnp.ones(len(self.params['z_grid']), dtype=jnp.float64) * self.params['T_sat']
-        for thermal_aspect_ratio in thermal_a_array:
-            aspect_ratio = (thermal_aspect_ratio*Opti_jax.q_b_fun(p))/( 4*1.02*(1-thermal_aspect_ratio)*((p["U_L"]*p["LF"]*(p["T_air"] - p["T_sat"]))+(p["U_V"]*(1-p["LF"])*p["eta_w"] * (p["T_air"] - jnp.mean(T_V)))))
-            a_array.append(aspect_ratio)
-        if log:
-            plt.plot(thermal_a_array, jnp.log(jnp.array(a_array)))
-        else:
-            plt.plot(thermal_a_array, jnp.array(a_array))
-        plt.xlabel('Thermal Aspect Ratio')
-        plt.ylabel('Aspect Ratio')
-        plt.title('Response Surface of Aspect Ratio vs Thermal Aspect Ratio')
-        plt.legend()
-        plt.grid(True)
-
+    ###################################
+    # Thermal Aspect Ratio Optimization
+    ###################################
+    
     @staticmethod
     @jax.jit
     def thermal_aspect_ratio(aspect_ratio, p, T_V):
@@ -692,7 +617,7 @@ class Opti_jax:
         a_eff = jnp.exp(aspect_ratio)
         sol   = self.thermal_aspect_ratio_evaporate(a_eff)
         V_L   = sol.ys[:, 0]
-        T_V = sol.ys[:, 1]
+        T_V   = sol.ys[:, 1]
         t     = sol.ts
         return (self.BOR(V_L, t), self.thermal_aspect_ratio(a_eff, self.params, T_V))
 
@@ -747,6 +672,23 @@ class Opti_jax:
         
         return (optimal_aspect_ratio, optimal_thermal_aspect_ratio, min_bor)
 
+    def plot_thermal_aspect_ratio(self, thermal_a_array, log = False):
+        a_array = []
+        p = self.params
+        T_V = jnp.ones(len(self.params['z_grid']), dtype=jnp.float64) * self.params['T_sat']
+        for thermal_aspect_ratio in thermal_a_array:
+            aspect_ratio = (thermal_aspect_ratio*Opti_jax.q_b_fun(p))/( 4*1.02*(1-thermal_aspect_ratio)*((p["U_L"]*p["LF"]*(p["T_air"] - p["T_sat"]))+(p["U_V"]*(1-p["LF"])*p["eta_w"] * (p["T_air"] - jnp.mean(T_V)))))
+            a_array.append(aspect_ratio)
+        if log:
+            plt.plot(thermal_a_array, jnp.log(jnp.array(a_array)))
+        else:
+            plt.plot(thermal_a_array, jnp.array(a_array))
+        plt.xlabel('Thermal Aspect Ratio')
+        plt.ylabel('Aspect Ratio')
+        plt.title('Response Surface of Aspect Ratio vs Thermal Aspect Ratio')
+        plt.legend()
+        plt.grid(True)
+
     def plot_thermal_aspect_ratio_surface_response(self, a_array, t_final, LF_array):
         """
         Plots the response surface of the boil-off rate (BOR) as a function of the thermal aspect ratio.
@@ -777,57 +719,8 @@ class Opti_jax:
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.title('Surface Response of Thermal vs Geometrical Aspect Ratio')
         pass
-    def plot_aspect_ratio_surface_response(self, a_array, t_final, save = False, filename = 'aspect_ratio_response_surface.csv'):
-        """
-        Plots the response surface of the boil-off rate (BOR) as a function of the thermal and geometric aspect ratio.
-        
-        Parameters
-        ----------
-        a_array : jnp.ndarray
-            Array of aspect ratios for which to compute the boil-off rates.
-        t_final : float
-            Final simulation time in seconds, used to set the time for the evaporation simulation.
-        """
-        self.time = t_final
-        BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
-        opt_gar, opt_tar, min_bor = self.thermal_aspect_ratio_optimize_grid_with_refinement(verbose=False, t_final=t_final, coarse_samples=100, fine_samples=1000,
-                                      aspect_ratio_min=0.02, aspect_ratio_max=10, refinement_window=0.1)
-        plt.figure(figsize = (8,5), dpi = 300)
-        # plot both curves
-        plt.plot(a_array, BOR_values, color="blue", label='Geometric', zorder=1)
-        plt.plot(thermal_a_array, BOR_values, color="orange", label="Thermal", zorder=1)
-        # triangle for opt_gar
-        plt.scatter(opt_gar, min_bor, color='blue', marker='^', s=20, label='Opt. Geometric AR', zorder=3)
-        # Square for opt_tar
-        plt.scatter(opt_tar, min_bor, color='orange', marker='s', s=20, label='Opt. Thermal AR', zorder=3)
-        # horizontal line for min_bor
-        plt.axhline(y=min_bor, color='gray', linestyle=':', label=f'Min BOR', zorder=2)
-        # adjust layout
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.xlabel('Aspect Ratio')
-        plt.ylabel('Boil-Off Rate (BOR)')
-        plt.title("Response Surface of Geometric/Thermal Aspect Ratio vs Boil-Off Rate | "+ str(t_final/3600) + ' h')
-        plt.grid(True)
-        plt.tight_layout()
-        # Print Table with optimal values
-        print("+-------------------------------------------------------------+")
-        print(f"| Optimal Thermal aspect ratio:    {opt_tar:<10}               |")
-        print(f"| Optimal Geometric aspect ratio:  {opt_gar:<10}               |")
-        print(f"| Minimal BOR:                     {min_bor:<10}               |")
-        print("+-------------------------------------------------------------+")
 
-        if save:
-            df = pd.DataFrame({
-                'Aspect Ratio': a_array,
-                'Thermal Aspect Ratio': thermal_a_array,
-                'Boil-Off Rate (BOR)': BOR_values
-            })
-            df.to_csv(filename, index=False)
-            print(f"Data saved to {filename}")
-
-        pass
-
-    def plot_surface_response_thermal_aspect_ratio_liquid_filling(self, a_array, lf_array, t_final):
+    def plot_surface_response_thermal_aspect_ratio_liquid_filling(self, a_array, lf_array, t_final, save = False, filename = 'surface_response_LFs.csv'):
         """
         Plots the response surface of the boil-off rate (BOR) as a function of the thermal aspect ratio, for each
         liquid filling provided.
@@ -863,20 +756,28 @@ class Opti_jax:
         cmap = plt.get_cmap('inferno', len(lf_array) + 1)
         colors = [cmap(i) for i in range(len(lf_array))]
 
+        # Save response surfaces for each LF
+        bor_values           = []
+        thermal_aspect_ratio = []
+
         for idx, LF in enumerate(lf_array):
             self.tank.LF = LF
             self.params  = self.make_params(self, self.tank)
             self.time    = t_final
             BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
             color = colors[idx]
-            ax1.plot(a_array, BOR_values, label=r'LF = ' + str(self.tank.LF), color=color)
-            ax2.plot(thermal_a_array, BOR_values, label=r'LF = ' + str(self.tank.LF), color=color)
-            ax3.plot(a_array,thermal_a_array,label=r'LF = ' + str(self.tank.LF), color=color)
+            ax1.plot(a_array, BOR_values, label=f'LF = {self.tank.LF:.2f}', color=color)
+            ax2.plot(thermal_a_array, BOR_values, label=f'LF = {self.tank.LF:.2f}', color=color)
+            ax3.plot(a_array, thermal_a_array, label=f'LF = {self.tank.LF:.2f}', color=color)
             optimal_aspect_ratio, optimal_thermal_aspect_ratio, min_BOR = self.thermal_aspect_ratio_optimize_grid_with_refinement(verbose=False, t_final=self.time, coarse_samples=100, fine_samples=1000,
                                    aspect_ratio_min=0.02, aspect_ratio_max=10, refinement_window=0.1)
             opt_a_values = jnp.append(opt_a_values, optimal_aspect_ratio)
             opt_bor_values = jnp.append(opt_bor_values, min_BOR)
             opt_thermal_a_values = jnp.append(opt_thermal_a_values, optimal_thermal_aspect_ratio)
+
+            # Save for each LF
+            bor_values.append(BOR_values)
+            thermal_aspect_ratio.append(thermal_a_array)
 
         print(f"optimal Aspect Ratio: {opt_a_values}")
         print(f"optimal Thermal Aspect Ratio: {opt_thermal_a_values}")
@@ -902,4 +803,68 @@ class Opti_jax:
 
         self.tank.LF = LF_og
         self.params = self.make_params(self, self.tank)
-        return plt.show()
+        plt.show()
+
+        if save:
+            df_export = pd.DataFrame(jnp.array(bor_values).T, columns=[f'BOR_LF_{lf:.2f}' for lf in lf_array])
+            for i, arr in enumerate(thermal_aspect_ratio):
+                df_export[f'Thermal_AR_LF_{lf_array[i]:.2f}'] = arr
+
+            df_export.insert(0, 'Geometric_AR', a_array)
+            df_export.to_csv(filename, index=False)
+
+        pass
+
+    ##########################################
+    # Plot both aspect ratios vs BOR and save
+    ##########################################
+
+    def plot_aspect_ratio_surface_response(self, a_array, t_final, save = False, filename = 'aspect_ratio_response_surface.csv'):
+        """
+        Plots the response surface of the boil-off rate (BOR) as a function of the thermal and geometric aspect ratio.
+        
+        Parameters
+        ----------
+        a_array : jnp.ndarray
+            Array of aspect ratios for which to compute the boil-off rates.
+        t_final : float
+            Final simulation time in seconds, used to set the time for the evaporation simulation.
+        """
+        self.time = t_final
+        BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
+        opt_gar, opt_tar, min_bor = self.thermal_aspect_ratio_optimize_grid_with_refinement(verbose=False, t_final=t_final, coarse_samples=100, fine_samples=1000,
+                                      aspect_ratio_min=0.02, aspect_ratio_max=10, refinement_window=0.1)
+        plt.figure(figsize = (8,5), dpi = 300)
+        # plot both curves
+        plt.plot(a_array, BOR_values, color="blue", label='Geometric', zorder=1)
+        plt.plot(thermal_a_array, BOR_values, color="orange", label="Thermal", zorder=1)
+        # triangle for opt_gar
+        plt.scatter(opt_gar, min_bor, color='blue', marker='^', s=20, label='Opt. Geometric AR', zorder=3)
+        # Square for opt_tar
+        plt.scatter(opt_tar, min_bor, color='orange', marker='s', s=20, label='Opt. Thermal AR', zorder=3)
+        # horizontal line for min_bor
+        plt.axhline(y=min_bor, color='gray', linestyle=':', label=f'Min BOR', zorder=2)
+        # adjust layout
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.xlabel('Aspect Ratio')
+        plt.ylabel('Boil-Off Rate (BOR)')
+        plt.title("Response Surface of Geometric/Thermal Aspect Ratio vs Boil-Off Rate | "+ str(t_final/3600) + ' h')
+        plt.grid(True)
+        plt.tight_layout()
+        # Print Table with optimal values
+        print("+-------------------------------------------------------------+")
+        print(f"| Optimal Thermal aspect ratio:    {opt_tar:.6f}             |")
+        print(f"| Optimal Geometric aspect ratio:  {opt_gar:.6f}             |")
+        print(f"| Minimal BOR:                     {min_bor:.6f}             |")
+        print("+-------------------------------------------------------------+")
+
+        if save:
+            df = pd.DataFrame({
+                'Aspect Ratio': a_array,
+                'Thermal Aspect Ratio': thermal_a_array,
+                'Boil-Off Rate (BOR)': BOR_values
+            })
+            df.to_csv(filename, index=False)
+            print(f"Data saved to {filename}")
+
+        pass
