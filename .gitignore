@@ -93,5 +93,5 @@ ENV/
 .ropeproject
 
 # Output data files
-*.csv
 *.png
+*.svg
