@@ -868,3 +868,38 @@ class Opti_jax:
             print(f"Data saved to {filename}")
 
         pass
+
+
+    def plot_xx_aspect_ratio_surface_response(self, a_array, t_final):
+        """
+        Plots the response surface of the boil-off rate (BOR) as a function of the thermal aspect ratio.
+        
+        Parameters
+        ----------
+        thermal_a_array : jnp.ndarray
+            Array of thermal aspect ratios for which to compute the boil-off rates.
+        t_final : float
+            Final simulation time in seconds, used to set the time for the evaporation simulation.
+        """
+        self.time = t_final
+        BOR_values, thermal_a_array = jax.vmap(lambda a: self.thermal_aspect_ratio_objective_function(jnp.log(a)))(a_array)
+        fig, ay1 = plt.subplots()
+
+        # Primer eje x (izquierda)
+        ay1.set_xlabel('Geometric Aspect Ratio', color='tab:blue')
+        ay1.set_ylabel('Boil-Off Rate (BOR)')
+        ay1.plot(a_array, BOR_values, color='tab:blue', label='Geometric')
+        ay1.tick_params(axis='x', labelcolor='tab:blue')
+
+        # Segundo eje x (derecha)
+        ay2 = ay1.twiny()
+        ay2.set_xlabel('Thermal Aspect Ratio', color='tab:orange')
+        ay2.plot(thermal_a_array, BOR_values, color='tab:orange', label=r"Thermal")
+        ay2.tick_params(axis='x', labelcolor='tab:orange')
+
+        fig.set
+        fig.suptitle("Response Surface of Geometric/Thermal Aspect Ratio vs Boil-Off Rate | "+ str(t_final/3600) + ' h')
+        plt.grid(True)
+        plt.tight_layout()
+        
+        pass
