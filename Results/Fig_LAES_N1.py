@@ -2,10 +2,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 folder = "Data/"
-data_30d_rq03 = pd.read_csv(folder+'LAES_opti_30d_LFs_rq03.csv')
-optimos_30d_rq03 = pd.read_csv(folder+'LAES_opti_30d_LFs_rq03_opts.csv')
-data_30d_rq07 = pd.read_csv(folder+'LAES_opti_30d_LFs_rq07.csv')
-optimos_30d_rq07 = pd.read_csv(folder+'LAES_opti_30d_LFs_rq07_opts.csv')
+data_30d_rq03 = pd.read_csv(folder+'LAES_opti_12h_LFs_rq03.csv')
+optimos_30d_rq03 = pd.read_csv(folder+'LAES_opti_12h_LFs_rq03_opts.csv')
+data_30d_rq07 = pd.read_csv(folder+'LAES_opti_12h_LFs_rq07.csv')
+optimos_30d_rq07 = pd.read_csv(folder+'LAES_opti_12h_LFs_rq07_opts.csv')
 
 
 # Labels
@@ -18,7 +18,7 @@ fontsize_ticks  = 14
 fontsize_legend = 14
 linewidth       = 2.5
 paleta = plt.get_cmap('inferno', n+2)
-fig, axes = plt.subplots(1, 2, figsize=(15, 6), dpi=300)
+fig, axes = plt.subplots(1, 2, figsize=(14, 6), dpi=300)
 
 # Left subplot: BOR columns
 ax = axes[0]
