@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 folder = "Data/"
-data_LF05_rq03 = pd.read_csv(folder + "T_V_LF05_30days_rq03.csv")
-data_LF05_rq07 = pd.read_csv(folder + "T_V_LF05_30days_rq07.csv")
-data_LF95_rq03 = pd.read_csv(folder + "T_V_LF95_30days_rq03.csv")
-data_LF95_rq07 = pd.read_csv(folder + "T_V_LF95_30days_rq07.csv")
+data_LF05_rq03 = pd.read_csv(folder + "T_V_LF05_30days_rq30.csv")
+data_LF05_rq07 = pd.read_csv(folder + "T_V_LF05_30days_rq70.csv")
+data_LF95_rq03 = pd.read_csv(folder + "T_V_LF95_30days_rq30.csv")
+data_LF95_rq07 = pd.read_csv(folder + "T_V_LF95_30days_rq70.csv")
 target_1_LF05 = 12 # hours
 target_2_LF05 = 48 # hours
 

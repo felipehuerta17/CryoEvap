@@ -367,7 +367,7 @@ class Opti_jax:
             print(f"Refined optimal aspect ratio: {optimal_aspect_ratio:.6f}")
             print(f"Minimum BOR: {min_bor:.6e}")
         
-        return optimal_aspect_ratio
+        return optimal_aspect_ratio, min_bor
 
     def plot_surface_response(self, a_array, t_final):
         """
