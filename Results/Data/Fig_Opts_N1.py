@@ -24,7 +24,8 @@ ax.set_xlabel('Geometrical Aspect Ratio', fontsize=fontsize_label)
 ax.set_ylabel('Liquid Filling', fontsize=fontsize_label)
 ax.tick_params(axis='both', labelsize=fontsize_ticks)
 ax.set_ylim(0.05, 0.95)
-ax.set_xlim([0.4, 0.5])
+ax.set_xlim([2.2, 2.8])
+
 ax.text(0.03, 0.97, 'a)', transform=ax.transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
 
 
@@ -37,7 +38,7 @@ ax.set_xlabel('Geometrical Aspect Ratio', fontsize=fontsize_label)
 # ax.set_ylabel('Thermal Aspect Ratio', fontsize=fontsize_label)
 ax.tick_params(axis='both', labelsize=fontsize_ticks)
 ax.set_ylim(0.05, 0.95)
-ax.set_xlim([2.2, 2.8])
+ax.set_xlim([0.4, 0.5])
 plt.legend(fontsize=fontsize_legend, loc=(-0.5, -0.25), ncol=4)
 ax.text(0.03, 0.97, 'b)', transform=ax.transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
 

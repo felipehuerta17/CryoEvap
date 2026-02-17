@@ -28,7 +28,7 @@ ax.plot(optimos_30d_rq03['Optimal_AR'], optimos_30d_rq03['Min_BOR'], label='Opti
 ax.set_xlabel('Geometrical Aspect Ratio', fontsize=fontsize_label)
 ax.set_ylabel('Boil-Off Rate (BOR) / %/day', fontsize=fontsize_label)
 ax.tick_params(axis='both', labelsize=fontsize_ticks)
-ax.set_ylim(0, 0.005)
+ax.set_ylim(0, 0.02)
 ax.set_xlim([0.2, 3])
 ax.text(0.03, 0.97, 'a)', transform=ax.transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
 
@@ -41,7 +41,7 @@ ax.plot(optimos_30d_rq07['Optimal_AR'], optimos_30d_rq07['Min_BOR'], label='Opti
 ax.set_xlabel('Geometrical Aspect Ratio', fontsize=fontsize_label)
 # ax.set_ylabel('Thermal Aspect Ratio', fontsize=fontsize_label)
 ax.tick_params(axis='both', labelsize=fontsize_ticks)
-ax.set_ylim(0, 0.02)
+ax.set_ylim(0, 0.005)
 ax.set_xlim([0.2, 3])
 plt.legend(fontsize=fontsize_legend, loc=(-0.85, -0.25), ncol=4)
 ax.text(0.03, 0.97, 'b)', transform=ax.transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
