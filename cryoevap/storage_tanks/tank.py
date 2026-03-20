@@ -70,7 +70,7 @@ class Tank:
 
         # Store integrated quantities as dictionaries
         self.data = {'Time':[], 'Tv_avg': [], 'rho_V_avg': [],
-                    'Q_VL': [],'Q_L': [], 'Q_V': [],
+                    'Q_VL': [],'Q_wet': [], 'Q_V': [],
                     'V_L': [], 'B_L': [], 'BOG': [],
                     'drho_V_avg': [], 'dV_L': []}
         pass
@@ -337,7 +337,7 @@ class Tank:
             # Calculates latent heat of vaporisation
             dH_LV = self.cryogen.h_V - self.cryogen.h_L
 
-            return 1 /dH_LV * (self.Q_b + self.data['Q_L'] + self.data['Q_VL'] + self.data['Q_Vw'])
+            return 1 /dH_LV * (self.data['Q_wet'] + self.data['Q_VL'] + self.data['Q_Vw'])
         
     def Q_VL(self, T_V):
         '''
@@ -488,6 +488,9 @@ class Tank:
 
         vz_avg = []
         vz_list=[]
+        dz_list = []
+        dTdz_list = []
+        kavg = []
 
         for i in range(0, len(self.sol.t)):
             # Get the temperature at this time step
@@ -516,8 +519,14 @@ class Tank:
             dz = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
             dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)
 
+            dz_list.append(dz)
+            dTdz_list.append(dTdz_i)
+
             # Append Q_VL calculated using the Fourier's law
-            Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
+            if self.Geo_l == 'spherical':
+                Q_VL.append(self.cryogen.k_V_avg * np.pi*abs(2*l_L[i]*self.l/2 - l_L[i]**2) * dTdz_i)
+            else:
+                Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
 
             self.z = l_L[i]
             vz_list.append(self.v_z)
@@ -541,13 +550,17 @@ class Tank:
             
 
             self.cryogen.update_rho_V(self.z_grid, T_v, weight)
+            self.cryogen.update_k_V(self.z_grid, T_v, weight)
 
             # Average vapour density
             rho_V_avg.append(self.cryogen.rho_V_avg)
+            kavg.append(self.cryogen.k_V_avg)
 
         # Extrapolate average vapour density for t = 0
         rho_V_avg[0] = self.interpolate(self.sol.t, rho_V_avg)
         rho_V_avg = np.array(rho_V_avg)
+        kavg[0] = self.interpolate(self.sol.t, kavg)
+        kavg = np.array(kavg)
 
         # Vectorise
         self.data["z"] = l_L
@@ -568,6 +581,9 @@ class Tank:
         self.data['dTV_avg']   = self.dydt(self.sol.t,np.array(Tv_avg))
         self.data['rho_V_avg'] = rho_V_avg
         self.data['Q_VL']      = np.array(Q_VL)
+        self.data['dz']        = np.array(dz_list)
+        self.data['dT/dz']     = np.array(dTdz_list)
+        self.data['k_V_avg']   = np.array(kavg)
 
         # Reconstruct liquid and vapour heat ingresses.
         # Note that A_L, A_V are not used from the tank
@@ -575,12 +591,12 @@ class Tank:
 
         # The driving force of Q_V is the average temperature
         if self.Geo_v == "cylindrical" and self.Geo_l == "cylindrical":
-            Q_L = self.U_L * (np.pi * self.d_o * l_L + np.pi*self.d_i**2 / 4) * (self.T_air - self.cryogen.T_sat)
-            Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L) + np.pi*self.d_o**2 / 4) *( self.T_air - self.data['Tv_avg'])
+            Q_L = self.U_L * (np.pi * self.d_o * l_L + np.pi*(self.d_i**2) / 4) * (self.T_air - self.cryogen.T_sat)
+            Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L) + np.pi*(self.d_o**2) / 4) *( self.T_air - self.data['Tv_avg'])
         
         elif self.Geo_v == "spherical" and self.Geo_l == "spherical":
-            Q_L = self.U_L * (np.pi * self.d_o * (l_L + (self.d_o-self.d_i)/2)) * (self.T_air - self.cryogen.T_sat)
-            Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L + (self.d_o - self.d_i)/2)) *( self.T_air - self.data['Tv_avg'])
+            Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
+            Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L + (self.d_o - self.d_i)/2)) *(self.T_air - self.data['Tv_avg'])
         
         elif self.Geo_v == "spherical" and self.Geo_l == "cylindrical":
             Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
@@ -594,7 +610,7 @@ class Tank:
             Q_V = self.U_V * (self.T_air - self.data['Tv_avg']) * (A_total - A_wet)
 
        # Store reconstructed heat ingresses in the tank object
-        self.data['Q_L'] = np.array(Q_L)
+        self.data['Q_wet'] = np.array(Q_L)
         self.data['Q_V'] = np.array(Q_V)
         self.data['Q_Vw'] = np.array(Q_V) * self.eta_w
 
@@ -671,7 +687,8 @@ class Tank:
             return np.pi * self.d_o * self.l * self.LF
         
         elif self.Geo_l == "spherical":
-            return np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)
+            #return np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)
+            return np.pi*self.d_o*self.z
         
         elif self.Geo_l == "horizontal":
             return self.d_o * self.L * np.acos((self.d_o/2 - self.z) / (self.d_o/2)) + np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)

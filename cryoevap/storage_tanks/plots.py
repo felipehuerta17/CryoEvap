@@ -135,7 +135,7 @@ def plot_Q(tank, unit='kW'):
     plt.subplots_adjust(wspace=0.5)
 
     # Q_L_in plot
-    ax[0][0].plot(tank.sol.t, (tank.data['Q_L']* unit_conv[unit]), color = cmap(1/6))
+    ax[0][0].plot(tank.sol.t, (tank.data['Q_wet']* unit_conv[unit]), color = cmap(1/6))
     ax[0][0].set_ylabel("$\dot{Q}_L$ / " + unit)
     ax[0][0].set_xlabel("Time / s")
     ax[0][0].grid()
@@ -155,7 +155,7 @@ def plot_Q(tank, unit='kW'):
 
     # Q_{V,w} plot
     #ax[1][1].plot(tank.sol.t, (tank.data['Q_Vw'] * unit_conv[unit]), label="Q_Vw",color = cmap(1/6))
-    ax[1][1].plot(tank.sol.t, ( (tank.data['Q_Vw'] + tank.data['Q_VL'] + tank.data['Q_L'])  *
+    ax[1][1].plot(tank.sol.t, ( (tank.data['Q_Vw'] + tank.data['Q_VL'] + tank.data['Q_wet'])  *
                                 unit_conv[unit]), label="Q_{tot}",color = cmap(1/6))
     # ax[1][1].set_ylabel("$\dot{Q}_{V,w}$ / " + unit)
     ax[1][1].set_ylabel("$\dot{Q}_{tot}$ / " + unit)
