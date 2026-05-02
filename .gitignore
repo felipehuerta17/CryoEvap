@@ -96,3 +96,6 @@ ENV/
 *.csv
 *.png
 *.svg
+
+# Claude and AI
+prompts/
