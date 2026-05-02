@@ -1,0 +1,63 @@
+Sensitivity analysis on the external convection coefficient h_env
+==================================================================
+
+Reviewer point 3 (round 2): the effect of the external convection
+coefficient on the main results was tested by re-running the long-term
+LF=0.95 ammonia simulation with h_env varied between 0.5 x and 2.0 x the
+baseline value of 14.839 W m^-2 K^-1, while keeping all other parameters
+(U_L, U_V, U_b, geometry, perlite properties) at the values used in the
+manuscript. The Robin boundary condition at the external tank wall is the
+only quantity changed.
+
+Results (LF = 0.95, ammonia, P = 101 325 Pa)
+
+  Time         h_env x 0.5     baseline      h_env x 2.0
+                7.4195         14.8390        29.6780  W m^-2 K^-1
+  ----------------------------------------------------------
+  Q_tot at  1 h     106.30        106.30        106.30  kW
+  Q_tot at 24 h      30.85         30.87         30.88  kW
+  Q_tot at 72 h      28.90         28.97         29.01  kW
+  Q_tot at 504 h     28.89         28.97         29.01  kW
+  BOG at 504 h       75.96         76.16         76.26  kg h^-1
+  <T_w> at 504 h    257.70        257.81        257.86  K
+
+Quasi-steady relative changes vs baseline:
+  h_env x 0.5 :  Q_tot -0.26 % ,  BOG -0.26 %
+  h_env x 2.0 :  Q_tot +0.14 % ,  BOG +0.14 %
+
+Maximum wall-temperature deviation across the entire 3-week time history:
+  |T_w(0.5 h_env) - T_w(baseline)| max = 0.42 K
+  |T_w(2.0 h_env) - T_w(baseline)| max = 0.21 K
+
+Interpretation
+--------------
+The total thermal resistance of the wall is dominated by the perlite
+insulation (R_perlite ~ r_o ln(r_o/r_i)/k_p approx 11.3 m^2 K W^-1
+referred to the outer area), whereas the external convective resistance
+1/h_env approx 0.067 m^2 K W^-1 contributes ~0.6 % of the total. Halving
+or doubling h_env therefore shifts U_L by less than 0.6 % and the
+quasi-steady heat ingress and BOG by under 0.3 %. The transient is also
+robust: peak heat ingress at t = 1 h is identical to within 0.01 % across
+the three cases because the wall is initially at T_env and the inner
+boundary controls the fast transient. The largest single deviation
+observed in the wall temperature distribution is 0.42 K, located near
+the outer surface during the first day of the 0.5 x run, and is
+indistinguishable on the scale of the published Figs. 2 and 3.
+
+Supporting figures
+------------------
+  Results/Figures/Fig_2_h_sensitivity.svg
+  Results/Figures/Fig_3_h_sensitivity.svg
+
+Solid coloured lines reproduce the published baseline run; dotted lines
+are the 0.5 x case and dashed lines the 2.0 x case. The three sets of
+curves are visually superimposed throughout, confirming that the choice
+of h_env does not affect the conclusions of the paper.
+
+Reproducibility
+---------------
+Generation scripts (run from the project root):
+  python Results/h_sensitivity.py        # produces 6 .pkl datasets
+  python Results/Fig_2_h_sensitivity.py  # writes Fig_2_h_sensitivity.svg
+  python Results/Fig_3_h_sensitivity.py  # writes Fig_3_h_sensitivity.svg
+  python Results/h_sensitivity_summary.py
