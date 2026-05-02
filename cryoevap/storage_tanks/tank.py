@@ -131,6 +131,8 @@ class Tank:
         # Fix the initial wall temperature to the environmental temperature
         if self.T_init:
             self.T_w = np.ones(len(self.r_grid)) * self.T_env(0)
+            if hasattr(self, 'e_wi') and self.e_wi > 0:
+                self.T_wi = self.T_env(0)
 
         pass
 
@@ -158,7 +160,7 @@ class Tank:
         
 
     
-    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True):  
+    def set_HeatTransProps(self, U_L, U_V, T_air, Q_b_fixed=None, Q_roof=0, eta_w = 0, k_w = 0.1, rho_w = 50, cp_w = 1000, h_L = 0, T_init = True, k_wi = 50.0, rho_wi = 7850.0, cp_wi = 490.0, e_wi = 0.0, h_env_roof = 10.0):  
         """
         Set separately tank heat transfer properties
         
@@ -175,6 +177,10 @@ class Tank:
             cp_w      : Wall specific heat capacity / J kg^-1 K^-1
             h_L       : Liquid phase heat transfer coefficient / W m^-2 K^-1
             T_init    : Set initial wall temperature as environmental temperature / True or False
+            k_wi      : Inner metallic wall thermal conductivity / W m^-1 K^-1  [Phase 1]
+            rho_wi    : Inner metallic wall density / kg m^-3                    [Phase 1]
+            cp_wi     : Inner metallic wall specific heat / J kg^-1 K^-1         [Phase 1]
+            e_wi      : Inner metallic wall thickness / m (0 = disabled)         [Phase 1]
         
         Returns:
         --------
@@ -221,6 +227,18 @@ class Tank:
         # Define T_env as constant by default
         self.T_env = lambda t: self.T_air
 
+        # --- Phase 1: lumped metallic roof shell model ---
+        # Properties for the inner steel shell (C-Mn steel defaults)
+        self.k_wi      = k_wi       # [W/m/K]   thermal conductivity
+        self.rho_wi    = rho_wi     # [kg/m³]   density
+        self.cp_wi     = cp_wi      # [J/kg/K]  specific heat
+        self.e_wi      = e_wi       # [m]        roof panel thickness (0 = model disabled)
+        self.h_env_roof = h_env_roof # [W/m²/K]  external convection coeff. at roof
+
+        # Initial roof shell temperature (only meaningful when e_wi > 0)
+        if e_wi > 0:
+            self.T_wi = T_air if self.T_init else self.cryogen.T_sat
+
         pass
 
     def evaporate(self, t_f):
@@ -257,7 +275,10 @@ class Tank:
         Tw_0[-1] = (self.h_env * self.T_env(0) + Tw_0[-2] * (4 * self.k_w / (2 * dr)) - Tw_0[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
         
         # Concatenate initial conditions in a single vector
-        IC = np.concatenate([[VL_0], Tv_0, Tw_0])
+        if self.e_wi > 0:
+            IC = np.concatenate([[VL_0], Tv_0, Tw_0, [self.T_wi]])
+        else:
+            IC = np.concatenate([[VL_0], Tv_0, Tw_0])
 
         # Integrate
         sol = solve_ivp(self.sys_isobaric, (0, t_f), IC, t_eval = t_eval, method='RK45', atol=1e-6, rtol=1e-6)        
@@ -350,14 +371,28 @@ class Tank:
         # temperature is constant for isobaric evaporation
         dT[0] = 0
 
-        # 2nd order extrapolation
-        # Assumes that the wall heat flow partitioning also applies at the tank roof
-        if self.roof_BC == "Robin":
-            dT[-1] = (4*dT[-2] - dT[-3])/(3 + 2 * self.U_roof * (1-self.eta_w) * dz)
+        # Roof BC: Robin condition driven by T_roof (lumped metallic shell, Phase 1)
+        # or by T_env directly (legacy Robin) or insulated (Neumann).
+        #
+        # Discretisation (2nd-order one-sided at z = z_R):
+        #   -k_V * (3T[-1] - 4T[-2] + T[-3]) / (2dz) = U_roof*(1-eta_w)*(T_drive - T[-1])
+        # Rearranging for dT[-1] (differential BC from the interior ODE):
+        #   dT[-1] = (4*dT[-2] - dT[-3]) / (3 + 2*U_roof*(1-eta_w)*dz/alpha*alpha)
+        # Because the ODE operates on dT (not T), we cast the Robin condition in
+        # differential form via the 2nd-order extrapolation:
+        #   dT[-1] = (4*dT[-2] - dT[-3] - 2*dz/alpha * U_roof*(1-eta_w)*(T[-1] - T_drive)) / 3
+        if self.e_wi > 0:
+            # Phase 1: roof temperature is the lumped metallic shell state T_wi
+            T_drive = self.T_wi
+            dT[-1] = (4*dT[-2] - dT[-3] - (2*dz/alpha) * self.U_roof*(1-self.eta_w)*(T[-1] - T_drive)) / 3
+        elif self.roof_BC == "Robin":
+            # Legacy Robin: T_env drives the roof directly
+            T_drive = self.T_env(t)
+            dT[-1] = (4*dT[-2] - dT[-3] - (2*dz/alpha) * self.U_roof*(1-self.eta_w)*(T[-1] - T_drive)) / 3
         else:
-            # Neumann boundary condition
+            # Neumann boundary condition (insulated roof — legacy default)
             dT[-1] = (4*dT[-2] - dT[-3])/3
-        
+
         return dT
 
     def sys_wall(self, t, y):
@@ -383,6 +418,7 @@ class Tank:
         n = len(self.r_grid) 
 
         # Boundary corrections
+        # Inner face: Robin BC driven by liquid convection
         T[0]  = (self.H_L * T_L + T[1] * (4 * self.k_w / (2 * dr)) - T[2] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.H_L)
 
         T[-1] = (self.h_env * self.T_env(t) + T[-2] * (4 * self.k_w / (2 * dr)) - T[-3] * (self.k_w / (2 * dr))) / (3 * self.k_w / (2 * dr) + self.h_env)
@@ -415,21 +451,73 @@ class Tank:
 
         return dT
 
+    def sys_wall_roof(self, T_v_top, t):
+        '''
+        Lumped-parameter (0D) ODE for the inner metallic roof shell. [Phase 1]
+
+        The steel roof panel is assumed thin relative to its thermal conductivity
+        (Bi << 1), so a single bulk temperature T_wi describes it.
+
+        Energy balance per unit roof area:
+
+            rho_wi * e_wi * cp_wi * dT_wi/dt
+                =  h_env_roof * (T_env - T_wi)             [external convection from environment]
+                -  U_roof * (1-eta_w) * (T_wi - T_v_top)  [convective coupling to vapour at roof]
+
+        The area A_roof cancels, giving a per-unit-area form.
+
+        Args:
+            T_v_top : Temperature at the top vapour node T_v[-1]  [K]
+            t       : Current time  [s]
+
+        Returns:
+            dT_wi : dT_wi/dt  [K/s]
+        '''
+        # Thermal mass per unit area of the roof panel
+        m_per_area = self.rho_wi * self.e_wi * self.cp_wi
+
+        # Heat flux from environment to roof (external convection)
+        q_in  = self.h_env_roof * (self.T_env(t) - self.T_wi)
+
+        # Heat flux from roof to vapour (internal convection / overall U)
+        q_out = self.U_roof * (1 - self.eta_w) * (self.T_wi - T_v_top)
+
+        return (q_in - q_out) / m_per_area
+
     def sys_isobaric(self, t, y):
         '''
-        Constructs liquid volume + vapour temperature + wall temperature subsystem
+        Constructs liquid volume + vapour temperature + wall temperature subsystem.
+        When e_wi > 0 (Phase 1), the lumped inner-wall temperature T_wi is appended
+        as the last element of the state vector.
         '''
+        n_z = len(self.z_grid)
+        n_r = len(self.r_grid)
+
         # Liquid volume derivative
         dV = self.sys_liq_volume(t, y[0])
 
         # ODE system with nodal vapour temperature derivatives
-        dT_V =  self.sys_temperature(t, y[1:len(self.z_grid)+1])
+        dT_V = self.sys_temperature(t, y[1:1+n_z])
 
-        # Wall temperature derivative
-        dT_w = self.sys_wall(t, y[1:])
+        if self.e_wi > 0:
+            # Update lumped roof shell temperature from state vector
+            self.T_wi = y[1+n_z+n_r]
 
-        # Return right hand side of the ODE system
-        return np.concatenate([[dV], dT_V, dT_w])
+            # Wall (insulation) PDE — pass only [T_v | T_w_ins] slice
+            dT_w = self.sys_wall(t, y[1:1+n_z+n_r])
+
+            # Lumped roof shell ODE: driven by T_env above and T_v[-1] below
+            T_v_top = y[n_z]      # T_v[-1] = last vapour node (top of domain)
+            dT_wi   = self.sys_wall_roof(T_v_top, t)
+
+            # Return right hand side of the ODE system
+            return np.concatenate([[dV], dT_V, dT_w, [dT_wi]])
+        else:
+            # Wall temperature derivative (original behaviour)
+            dT_w = self.sys_wall(t, y[1:])
+
+            # Return right hand side of the ODE system
+            return np.concatenate([[dV], dT_V, dT_w])
 
     def evap_rate(self, t):
         '''
@@ -654,13 +742,17 @@ class Tank:
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
 
+        # Precompute grid sizes for explicit state-vector indexing
+        n_z = len(self.z_grid)
+        n_r = len(self.r_grid)
+
         # Reconstruct liquid length for heat transfer calculations
         l_L = self.sol.y[0] / self.A_T
 
         for i in range(len(self.sol.t)):
             # Get the temperature at this time step
-            T_v = self.sol.y[1:len(self.z_grid) + 1, i]
-            T_w = self.sol.y[len(self.z_grid) + 1:, i]
+            T_v = self.sol.y[1:1+n_z,         i]
+            T_w = self.sol.y[1+n_z:1+n_z+n_r, i]
             # Calculate and append Q_VL
 
             # Update vapour thermal conductivity
@@ -744,8 +836,12 @@ class Tank:
             - (self.V - self.data['V_L']) * self.data['drho_V_avg'])
 
         # Wall temperature raw
-        self.data['T_w_raw'] = self.sol.y[len(self.z_grid) + 1:, :]
-        self.data['T_V_raw'] = self.sol.y[1:len(self.z_grid) + 1, :]
+        self.data['T_w_raw'] = self.sol.y[1+n_z:1+n_z+n_r, :]
+        self.data['T_V_raw'] = self.sol.y[1:1+n_z, :]
+
+        # Phase 1: store inner metallic wall temperature time-series
+        if self.e_wi > 0:
+            self.data['T_wi_raw'] = self.sol.y[1+n_z+n_r:, :]
 
         return
     
