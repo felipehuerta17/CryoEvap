@@ -33,7 +33,7 @@ ax.text(0.03, 0.97, 'a)', transform=ax.transAxes, fontsize=18, fontweight='bold'
 ax = axes[1]
 for i in range(n):
     data = optimos[optimos["Cryogen"] == label[i]+"_rq07"]
-    ax.plot(data['Optimal_AR'], data['LF'], label=label[i], linewidth=linewidth, color=paleta(i+1))
+    ax.plot(data['LF'] , data['Optimal_AR'], label=label[i], linewidth=linewidth, color=paleta(i+1))
 ax.set_xlabel('Geometrical Aspect Ratio', fontsize=fontsize_label)
 # ax.set_ylabel('Thermal Aspect Ratio', fontsize=fontsize_label)
 ax.tick_params(axis='both', labelsize=fontsize_ticks)

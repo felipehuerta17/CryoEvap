@@ -9,7 +9,7 @@ optimos_30d_rq07 = pd.read_csv(folder+'LAES_opti_12h_LFs_rq07_opts.csv')
 
 
 # Labels
-label = ["LF 0.05", "LF 0.50", "LF 0.95"]
+label = [r"$LF_0\ 0.05$", r"$LF_0\ 0.50$", r"$LF_0\ 0.95$"]
 labels = ["BOR_LF_0.05", "BOR_LF_0.50", "BOR_LF_0.95"]
 n = len(labels)
 # Configuration
@@ -32,7 +32,8 @@ ax.tick_params(axis='both', labelsize=fontsize_ticks)
 ax.set_ylim(0, 0.2)
 ax.set_xlim([0.2, 3])
 ax.text(0.03, 0.97, 'a)', transform=ax.transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
-
+ax.text(0.25, 0.965, r'$r = 30\%$', transform=ax.transAxes, fontsize=fontsize_label,
+        va='top', ha='right', font='Arial')
 
 # Right subplot: BOR columns
 ax = axes[1]
@@ -46,5 +47,6 @@ ax.set_ylim(0, 0.07)
 ax.set_xlim([0.2, 3])
 plt.legend(fontsize=fontsize_legend, loc=(-0.85, -0.25), ncol=4)
 ax.text(0.03, 0.97, 'b)', transform=ax.transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
-
-plt.savefig("Figures/Fig_LAES_N1.svg", bbox_inches='tight', dpi=300)
+ax.text(0.25, 0.965, r'$r = 70\%$', transform=ax.transAxes, fontsize=fontsize_label,
+        va='top', ha='right', font='Arial')
+plt.savefig("Data/Figures/Fig_LAES_N1.svg", bbox_inches='tight', dpi=300)

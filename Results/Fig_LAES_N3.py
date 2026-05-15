@@ -40,6 +40,8 @@ axs[0].set_ylabel(r'Transient period ($\tau$) / h', fontsize=fontsize_label)
 axs[0].tick_params(axis='both', labelsize=fontsize_ticks)
 axs[0].legend(prop={'size': fontsize_legend})
 axs[0].text(0.03, 0.97, 'a)', transform=axs[0].transAxes, fontsize=18, fontweight='bold', va='top')
+axs[0].text(0.21, 0.965, r'$LF_0 = 5\%$', transform=axs[0].transAxes, fontsize=fontsize_label,
+        va='top', ha='right', font='Arial')
 axs[0].set_ylim(0, 570)
 
 # second subplot: LF95
@@ -49,6 +51,8 @@ axs[1].set_xlabel(r'Geometric aspect ratio ($a$)', fontsize=fontsize_label)
 axs[1].tick_params(axis='both', labelsize=fontsize_ticks)
 axs[1].legend(prop={'size': fontsize_legend})
 axs[1].text(0.03, 0.97, 'b)', transform=axs[1].transAxes, fontsize=18, fontweight='bold', va='top')
+axs[1].text(0.23, 0.965, r'$LF_0 = 95\%$', transform=axs[1].transAxes, fontsize=fontsize_label,
+        va='top', ha='right', font='Arial')
 axs[1].set_ylim(0, 28)
 
 axs[0].text(0.83, 0.375, rf'$\tau = {slope03_05:.3f}\,a^{{-1/3}}$', transform=axs[0].transAxes,
@@ -65,6 +69,6 @@ axs[1].text(0.83, 0.18, rf'$\tau = {slope07_95:.3f}\,a^{{-1/3}}$', transform=axs
 
 
 plt.tight_layout()
-plt.savefig("Figures/Fig_LAES_N3.svg", bbox_inches='tight', dpi=300)
+plt.savefig("Data/Figures/Fig_LAES_N3.svg", bbox_inches='tight', dpi=300)
 # plt.show()
 

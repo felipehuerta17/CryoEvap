@@ -32,7 +32,10 @@ time_at_target_2_LF95_rq07 = time_hours_LF95_rq07[time_hours_LF95_rq07 >= target
 
 # Adimensional grid
 x = np.linspace(0, 1, len(data_LF05_rq03.columns)-1)
-
+x_help = np.linspace(0, 1, 10)
+print(len(x), len(data_LF05_rq03.columns)-1, len(x_help), len(data_LF05_rq07.columns)-1)
+print(time_at_target_1_LF05_rq03, time_at_target_2_LF05_rq03, time_at_target_1_LF05_rq07, time_at_target_2_LF05_rq07)
+print(time_at_target_1_LF95_rq03, time_at_target_2_LF95_rq03, time_at_target_1_LF95_rq07, time_at_target_2_LF95_rq07)
 paleta = plt.get_cmap('inferno', 4)
 fontsize_label  = 14
 fontsize_ticks  = 14
@@ -51,16 +54,21 @@ axs[0].set_ylabel('Temperature / K', fontsize=fontsize_label)
 axs[0].tick_params(axis='both', labelsize=fontsize_ticks)
 axs[0].legend(fontsize=fontsize_legend)
 axs[0].text(0.03, 0.97, 'a)', transform=axs[0].transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
+axs[0].text(0.23, 0.965, r'$LF_0 = 5\%$', transform=axs[0].transAxes, fontsize=fontsize_label,
+        va='top', ha='right', font='Arial')
 axs[0].set_xlim(0, 1)
 # second subplot: LF95
+print(len(x), len(data_LF95_rq03.iloc[time_at_target_1_LF95_rq03, 1:]), len(data_LF95_rq07.iloc[time_at_target_1_LF95_rq07, 1:]), len(data_LF95_rq03.iloc[time_at_target_2_LF95_rq03, 1:]), len(data_LF95_rq07.iloc[time_at_target_2_LF95_rq07, 1:]))
 axs[1].plot(x, data_LF95_rq03.iloc[time_at_target_1_LF95_rq03, 1:], label=r'$r$ = 30%, 1 h', color=paleta(1), linewidth=2)
 axs[1].plot(x, data_LF95_rq03.iloc[time_at_target_2_LF95_rq03, 1:], '--', label=r'$r$ = 30%, 48 h', color=paleta(1), linewidth=2)
-axs[1].plot(x, data_LF95_rq07.iloc[time_at_target_1_LF95_rq07, 1:], label=r'$r$ = 70%, 1 h', color=paleta(2), linewidth=2)
-axs[1].plot(x, data_LF95_rq07.iloc[time_at_target_2_LF95_rq07, 1:], '--', label=r'$r$ = 70%, 48 h', color=paleta(2), linewidth=2)
+axs[1].plot(x_help, data_LF95_rq07.iloc[time_at_target_1_LF95_rq07, 1:], label=r'$r$ = 70%, 1 h', color=paleta(2), linewidth=2)
+axs[1].plot(x_help, data_LF95_rq07.iloc[time_at_target_2_LF95_rq07, 1:], '--', label=r'$r$ = 70%, 48 h', color=paleta(2), linewidth=2)
 axs[1].set_xlabel(r'Dimensionless height / $\xi$', fontsize=fontsize_label)
 axs[1].tick_params(axis='both', labelsize=fontsize_ticks)
 axs[1].legend(fontsize=fontsize_legend)
 axs[1].text(0.03, 0.97, 'b)', transform=axs[1].transAxes, fontsize=18, fontweight='bold', va='top', font='Arial')
+axs[1].text(0.25, 0.965, r'$LF_0 = 95\%$', transform=axs[1].transAxes, fontsize=fontsize_label,
+        va='top', ha='right', font='Arial')
 axs[1].set_xlim(0, 1)
 plt.tight_layout()
-plt.savefig("Figures/Fig_LAES_N2.svg", bbox_inches='tight', dpi=300)
+plt.savefig("Data/Figures/Fig_LAES_N2.svg", bbox_inches='tight', dpi=300)
