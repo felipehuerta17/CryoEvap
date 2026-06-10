@@ -95,3 +95,9 @@ ENV/
 # Output data files
 *.png
 *.svg
+
+# vscode settings
+.vscode/
+
+# Python cache files
+__pycache__/
