@@ -19,7 +19,8 @@ configs = [
             {'path': 'T_V_LF5_30days_ru_4.csv',   'ru_label': '4',    'color_idx': 2}
         ],
         'targets': [12, 72], # Horas objetivo para LF05
-        'ylim': (86, 101) # Límite del eje Y para el primer subplot
+        'ylim': (86, 101), # Límite del eje Y para el primer subplot
+        "text": r"LF$_0 = 0.05$" # Texto para el primer subplot
     },
     {
         'ax_idx': 1,
@@ -29,7 +30,8 @@ configs = [
             {'path': 'T_V_LF95_30days_ru_4.csv',   'ru_label': '4',    'color_idx': 2}
         ],
         'targets': [1, 72], # Horas objetivo para LF95
-        'ylim': (88, 88.65) # Límite del eje Y para el segundo subplot
+        'ylim': (88, 88.65), # Límite del eje Y para el segundo subplot
+        "text": r"LF$_0 = 0.95$" # Texto para el segundo subplot
     }
 ]
 
@@ -79,6 +81,8 @@ for config in configs:
             fontsize=18, fontweight='bold', va='top', fontname='Arial')
     ax.set_xlim(0, 1)
     ax.set_ylim(config['ylim']) # Ajusta el límite superior automáticamente
+    ax.text(0.1, 0.97, config['text'], transform=ax.transAxes, 
+            fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 
 # Añadir el label del eje Y solo al primer gráfico para mantenerlo limpio
 axs[0].set_ylabel('Temperature / K', fontsize=fontsize_label)

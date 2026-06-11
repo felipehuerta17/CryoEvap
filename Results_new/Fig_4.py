@@ -59,6 +59,8 @@ eq_07_05 = rf'$\tau \sim {coef07_05[0]:.2f}\,a^{{-1/3}}$'
 
 axs[0].text(0.74, 0.49, eq_03_05, transform=axs[0].transAxes, fontsize=14, color=paleta(1)) # Corrección de color y posición
 axs[0].text(0.73, 0.34, eq_07_05, transform=axs[0].transAxes, fontsize=14, color=paleta(2))
+axs[0].text(0.1, 0.97, r"LF$_0 = 0.05$", transform=axs[0].transAxes, 
+            fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 
 
 axs[1].plot(a, tau_rq_03_LF95, label=r'$r_U$ = 0.25', color=paleta(1), linewidth=linewidth)
@@ -68,6 +70,8 @@ axs[1].tick_params(axis='both', labelsize=fontsize_ticks)
 axs[1].legend(prop={'size': fontsize_legend})
 axs[1].text(0.03, 0.97, 'b)', transform=axs[1].transAxes, fontsize=18, fontweight='bold', va='top')
 axs[1].set_ylim(0, 28)
+axs[1].text(0.1, 0.97, r"LF$_0 = 0.95$", transform=axs[1].transAxes, 
+            fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 
 # Textos de ecuaciones con colores corregidos
 eq_03_95 = rf'$\tau \sim {coef03_95[0]:.2f}\,a^{{-1/3}}$'

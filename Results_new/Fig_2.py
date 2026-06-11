@@ -41,12 +41,12 @@ fig, axes = plt.subplots(2, 2, figsize=(14, 6), dpi=300,
 # Ajuste de rangos: Nota cómo los yticks ahora están ESTRICTAMENTE dentro de los ylim
 subplot_configs = [
     {
-        'key': 'ru_025', 'xlim': [0.01, 0.5], 'letter': 'a)', 
+        'key': 'ru_025', 'xlim': [0.01, 0.5], 'letter': 'a)', "text": r"$r_U = 0.25$",
         'ylim_bottom': [0.00, 0.008], 'yticks_bottom': [0.00, 0.005],
         'ylim_top': [0.025, 0.08],     'yticks_top': [0.03, 0.05, 0.07]
     },
     {
-        'key': 'ru_4', 'xlim': [0.25, 3.0], 'letter': 'b)', 
+        'key': 'ru_4', 'xlim': [0.25, 3.0], 'letter': 'b)', "text": r"$r_U = 4.00$",
         'ylim_bottom': [0.00, 0.015], 'yticks_bottom': [0.000, 0.005, 0.010, 0.015],
         'ylim_top': [0.06, 0.15],     'yticks_top': [0.08, 0.10, 0.12, 0.14]
     }
@@ -56,7 +56,7 @@ def plot_curves(ax, df_data, df_opts):
     for i, lf in enumerate(target_lfs):
         subset = df_data[np.isclose(df_data['Liquid_Filling'], lf, atol=1e-3)]
         ax.plot(subset['Geometric_AR'], subset['BOR'], 
-                label=f"LF {lf:.2f}", linewidth=linewidth_curve, color=colors[i])
+                label=rf"LF$_0$ = {lf:.2f}", linewidth=linewidth_curve, color=colors[i])
         
     ax.plot(df_opts['Optimal_Geometric_AR'], df_opts['Min_BOR'], 
             label='Optimal Values', linewidth=linewidth_opt, color='black')
@@ -114,6 +114,8 @@ for col_idx, config in enumerate(subplot_configs):
     ax_top.text(0.04, 0.92, config['letter'], transform=ax_top.transAxes, 
                 fontsize=16, fontweight='bold', va='top', fontname='Arial')
 
+    ax_top.text(0.75, 0.92, config['text'], transform=ax_top.transAxes, 
+            fontsize=16, fontweight='bold', va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 # Etiqueta global del eje Y compartida
 fig.supylabel('Boil-Off Rate (BOR) / %/day', fontsize=fontsize_label, x=0.05, fontweight='medium')
 
