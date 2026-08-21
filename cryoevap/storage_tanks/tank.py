@@ -1040,7 +1040,7 @@ class Tank:
             else:
                 return self.Q_b_fixed
         elif self.Geo_l == "spherical" or self.Geo_l == "horizontal":
-            return self.Q_b_fixed
+            return 0.0 if self.Q_b_fixed is None else self.Q_b_fixed
 
     @property
     def tau(self):
