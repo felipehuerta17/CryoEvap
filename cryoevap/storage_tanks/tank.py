@@ -27,7 +27,7 @@ class Tank:
 
     def __init__(self, d_i, d_o, V, 
                  vapour_geometry = 'cylindrical', liquid_geometry = 'cylindrical', 
-                 LF = 0.97, L = None):
+                 LF = 0.97, L = None, head_type = "flat"):
         """ Class constructor """
         # Compulsory parameters
         self.d_i = d_i  # [m] Tank internal diameter
@@ -36,6 +36,17 @@ class Tank:
         self.LF  = LF # Initial liquid filling
         self.Geo_v = vapour_geometry
         self.Geo_l = liquid_geometry
+        self.head_type = head_type # new attribute
+
+#Nuevos cambios (Fabián)
+        if self.Geo_l == "cylindrical":
+            if self.head_type != "flat":
+                raise NotImplementedError("La geometría vertical actualmente solo está implementada con tapas planas.")
+
+        if self.head_type not in ("flat","hemispherical",None):
+            raise ValueError("head_type debe ser 'flat', ""'hemispherical' o None.")
+
+#Fin cambios (Fabián)
 
         if self.Geo_l == "cylindrical":
             self.A_T = np.pi * d_i ** 2 / 4  # [m^2] cross section area
@@ -51,8 +62,36 @@ class Tank:
             self.l   = d_i  # [m] Tank diameter
             self.L   = L    # [m] Tank length
             self.z   = self._z_L()
-            radius   = np.sqrt(self.d_i*self.z - self.z**2)
-            self.A_T = self.L * 2*radius  # [m^2] cross section area. Le saqué las tapas redondas.
+
+            #Cambio (Fabián)
+
+            # Mitad del largo de la cuerda líquido-vapor
+            half_chord = np.sqrt(np.maximum(self.d_i * self.z- self.z**2,0))
+
+            # Interfase dentro de la sección cilíndrica
+            A_T_cylinder = (2.0* self.L* half_chord)
+
+            if self.head_type == "flat":
+
+                self.A_T = A_T_cylinder
+
+            elif self.head_type == "hemispherical":
+
+                # Las dos tapas semiesféricas aportan
+                # en conjunto una sección circular
+                A_T_heads = (np.pi* half_chord**2)
+
+                self.A_T = (A_T_cylinder+ A_T_heads)
+
+            else:
+
+                raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+
+            #Fin del Cambio 
+
+            #radius   = np.sqrt(self.d_i*self.z - self.z**2)
+            #self.A_T = self.L * 2*radius  # [m^2] cross section area. Le saqué las tapas redondas.
 
 
         self.cryogen = Cryogen()  # Empty Cryogen, see Cryogen class
@@ -77,10 +116,30 @@ class Tank:
 
     def calculate_z_height(self, h, V):
         """Auxiliary function to calculate the height of the liquid using root_scalar of scipy.optimize"""
+        # Cambios (Fabián)
+        
+        # Liquid volume inside the cylindrical section
         V_c = self.L * ((self.d_i*0.5)**2 * np.acos(((self.d_i*0.5) - h) / (self.d_i*0.5)) - ((self.d_i*0.5) - h) * np.sqrt(2 * (self.d_i*0.5) * h - h**2))
-        V_s = (1/3) * np.pi * h**2 * (3 * (self.d_i*0.5) - h)
-        return V_c + V_s - V
-    
+
+        if self.head_type == "flat":
+
+            # Flat heads do not add internal volume
+            V_calculated = V_c
+
+        elif self.head_type == "hemispherical":
+
+            # The two hemispherical heads together form one sphere
+            V_s = (1/3) * np.pi * h**2 * (3 * (self.d_i*0.5) - h)
+
+            V_calculated = V_c + V_s
+
+        else:
+
+            raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+        return V_calculated - V
+        # Fin de los cambios 
+       
     def _z_L(self):
         return root_scalar(self.calculate_z_height, args=(self.LF*self.V), method='brentq', bracket=[1e-6, self.d_i]).root
 
@@ -175,10 +234,35 @@ class Tank:
             assert(self.z<self.d_i and self.z>=0 and isinstance(self.z,float))
             self.A_T = abs(np.pi*(2*self.l/2 * self.z - self.z**2))
 
-        elif self.Geo_l == 'horizontal':
-            self.z   = self._z_L()
-            radius   = np.sqrt(self.d_i*self.z - self.z**2)
-            self.A_T = self.L * 2*radius  # [m^2] cross section area
+        # modificación (Fabián)
+        elif self.Geo_l == "horizontal":
+
+            # Actualiza la altura de líquido usando el volumen actual
+            self.z = self._z_L()
+
+            # Mitad de la cuerda de la interfase líquido-vapor
+            half_chord = np.sqrt(np.maximum(self.d_i * self.z- self.z**2,0))
+
+            # Área interfacial dentro de la sección cilíndrica
+            A_T_cylinder = 2* self.L* half_chord
+
+            if self.head_type == "flat":
+
+                self.A_T = A_T_cylinder
+
+            elif self.head_type == "hemispherical":
+
+                # Las dos tapas semiesféricas aportan
+                # conjuntamente una sección circular
+                A_T_heads = (np.pi* half_chord**2)
+
+                self.A_T = (A_T_cylinder+ A_T_heads)
+
+            else:
+
+                raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+            
+        # Fin de modificación
 
         # Computes total heat ingress to the liquid
         Q_L_tot = self.Q_L_in + self.Q_b + self.Q_VL(self.cryogen.T_V) + self.Q_wi
@@ -188,6 +272,7 @@ class Tank:
 
         # Returns RHS of ODE that governs the liquid volume
         return -1 / self.cryogen.rho_L * (Q_L_tot/dH_LV)
+
     
     def sys_temperature(self, t, y):
         '''
@@ -215,10 +300,34 @@ class Tank:
             self.cryogen.Tv_avg = simpson(T,self.z_grid)
         
         elif self.Geo_v == "horizontal":
-            h_grid = self.z_grid*(L_dry)+self.z
-            radius   = np.sqrt(self.d_i*h_grid - h_grid**2)
-            weight = self.L * 2*radius  # [m^2] cross section area
-            self.cryogen.Tv_avg = simpson(T*weight, self.z_grid)/simpson(weight,self.z_grid)
+
+            # Altura física de cada nodo dentro de la fase vapor
+            h_grid = self.z_grid * L_dry + self.z
+
+            # Mitad de la cuerda horizontal en cada altura
+            half_chord = np.sqrt(np.maximum(self.d_i * h_grid - h_grid**2,0.0))
+
+            # Área horizontal aportada por la sección cilíndrica
+            weight_cylinder = 2.0 * self.L * half_chord
+
+            if self.head_type == "flat":
+
+                # Las tapas planas no agregan volumen
+                weight = weight_cylinder
+
+            elif self.head_type == "hemispherical":
+
+                # Las dos tapas semiesféricas juntas aportan
+                # una sección circular en cada altura
+                weight_heads = np.pi * half_chord**2
+
+                weight = weight_cylinder + weight_heads
+
+            else:
+
+                raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+            self.cryogen.Tv_avg = (simpson(T * weight, self.z_grid)/ simpson(weight, self.z_grid))
 
             
         # Update vapour temperature
@@ -480,6 +589,7 @@ class Tank:
         Q_VL = []
         Tv_avg = []
         rho_V_avg = []
+        A_T_horizontal = [] # Agregado x Fabián para construir el area en cada instante
 
         # Extract time-steps in seconds
         self.data['Time'] = self.sol.t
@@ -514,11 +624,36 @@ class Tank:
                 #h_grid = self.z_grid*(self.l-l_L[i])+l_L[i]
                 h_grid = self.z_grid*(self.l-l_L[i])+l_L[i] - (self.z_grid[1]-self.z_grid[0])*(self.l-l_L[i])/2
                 weight = np.sqrt(abs(2*h_grid*self.l/2 - h_grid**2))
-            
+
+            # Modificación Fabián
             elif self.Geo_v == "horizontal":
-                h_grid  = self.z_grid*(self.l-l_L[i])+l_L[i]
-                radius  = np.sqrt(self.d_i*h_grid - h_grid**2)
-                weight  = self.L * 2*radius  # [m^2] cross section area
+
+                # Altura física de cada nodo de vapor
+                # para el instante reconstruido
+                h_grid = (self.z_grid * (self.l - l_L[i])+ l_L[i])
+
+                # Mitad de la cuerda horizontal en cada altura
+                half_chord = np.sqrt(np.maximum(self.d_i * h_grid - h_grid**2,0.0))
+
+                # Área aportada por la sección cilíndrica
+                weight_cylinder = 2.0 * self.L * half_chord
+
+                if self.head_type == "flat":
+
+                    weight = weight_cylinder
+
+                elif self.head_type == "hemispherical":
+
+                    # Las dos tapas semiesféricas juntas aportan
+                    # una sección circular
+                    weight_heads = np.pi * half_chord**2
+
+                    weight = weight_cylinder + weight_heads
+
+                else:
+
+                    raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+            # Fin de modificación
             else:
                 weight = None
 
@@ -530,11 +665,57 @@ class Tank:
             dz = (self.z_grid[1] - self.z_grid[0])* ((self.l - l_L[i]))
             dTdz_i = (-3 * T_v[0] + 4 * T_v[1] - T_v[2])/(2*dz)
 
-            # Append Q_VL calculated using the Fourier's law
-            Q_VL.append(self.cryogen.k_V_avg * self.A_T * dTdz_i)
+            # Cambio Fabian
+
+            # Área interfacial correspondiente al instante actual
+            if self.Geo_l == "horizontal":
+
+                # Actualiza la altura utilizada por las propiedades del tanque
+                self.z = l_L[i]
+
+                # Mitad de la cuerda líquido-vapor
+                half_chord_i = np.sqrt(np.maximum(self.d_i * l_L[i]- l_L[i]**2,0.0))
+
+                # Aporte de la sección cilíndrica
+                A_T_i = (2.0* self.L* half_chord_i)
+
+                if self.head_type == "flat":
+
+                    pass
+
+                elif self.head_type == "hemispherical":
+
+                    # Aporte conjunto de las dos tapas semiesféricas
+                    A_T_i += (np.pi* half_chord_i**2)
+
+                else:
+
+                    raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+                # Actualiza el atributo existente para que v_z
+                # use el área correspondiente a este instante
+                self.A_T = A_T_i
+
+                # Guarda el resultado para reconstruir la serie temporal
+                A_T_horizontal.append(A_T_i)
+
+            else:
+
+                # Para las otras geometrías se conserva
+                # el comportamiento actual
+                A_T_i = self.A_T
+
+
+            # Transferencia de calor vapor-líquido
+            Q_VL.append(self.cryogen.k_V_avg* A_T_i* dTdz_i)
+
 
             self.z = l_L[i]
+
             vz_list.append(self.v_z)
+            
+
+            # Fin de Cambio
 
             # Average vapour temperature
             if weight is None:
@@ -570,10 +751,12 @@ class Tank:
             self.data["A_T"] = np.pi*abs(2*l_L*self.l/2 - l_L**2) #sphere only
             self.data['vz_avg'] = np.array(vz_avg)
 
-        elif self.Geo_l=='horizontal': 
-            # radius   = np.sqrt(self.d_i*self.z - self.z**2)
-            # self.A_T = self.L * 2*radius + np.pi* radius**2
-            self.data["A_T"] = self.L * 2 * np.sqrt(self.d_i*l_L - l_L**2)
+        # Cambio Fabián
+        elif self.Geo_l == "horizontal":
+
+            self.data["A_T"] = np.array(A_T_horizontal)
+
+        #Fin cambio 
 
         self.data['vz']        = np.array(vz_list)
         self.data['V_L']       = self.sol.y[0]
@@ -589,7 +772,7 @@ class Tank:
 
         # The driving force of Q_V is the average temperature
         if self.Geo_v == "cylindrical" and self.Geo_l == "cylindrical":
-            Q_L = self.U_L * (np.pi * self.d_o * l_L + np.pi*self.d_i**2 / 4) * (self.T_air - self.cryogen.T_sat)
+            Q_L = self.U_L * (np.pi * self.d_o * l_L) * (self.T_air - self.cryogen.T_sat)
             Q_V = self.U_V * (np.pi * self.d_o * (self.l - l_L) + np.pi*self.d_o**2 / 4) *( self.T_air - self.data['Tv_avg'])
         
         elif self.Geo_v == "spherical" and self.Geo_l == "spherical":
@@ -601,11 +784,55 @@ class Tank:
             Q_V = self.U_V*((np.pi*self.d_o**2)/2 + ((self.d_i/2 - l_L)*np.pi*self.d_o))*(self.T_air - self.data['Tv_avg'])
         
         elif self.Geo_v == "horizontal" and self.Geo_l == "horizontal":
-            A_total = np.pi * self.d_o * self.L + 2 * np.pi * (self.d_o/2)**2
-            A_wet   = self.d_o * self.L * np.acos((self.d_o/2 - l_L) / (self.d_o/2)) + np.pi*self.d_o*(l_L + (self.d_o - self.d_i)/2)       # Revisar    
-           
-            Q_L = self.U_L * (self.T_air - self.cryogen.T_sat)  * A_wet
-            Q_V = self.U_V * (self.T_air - self.data['Tv_avg']) * (A_total - A_wet)
+
+            # Radio exterior del tanque
+            R_o = self.d_o / 2.0
+
+            # Espesor radial de la pared
+            wall_thickness = (self.d_o - self.d_i) / 2.0
+
+            # Altura de la interfase medida desde
+            # el fondo de la geometría exterior
+            h_o = l_L + wall_thickness
+
+            h_o = np.clip(h_o,0.0,2.0 * R_o)
+
+            # Medio ángulo del arco mojado
+            theta = np.arccos(np.clip((R_o - h_o) / R_o,-1.0,1.0))
+
+            # Pared lateral cilíndrica mojada
+            A_lateral_wet = (self.d_o* self.L* theta)
+
+            if self.head_type == "flat":
+
+                sqrt_term = np.sqrt(np.maximum(2.0 * R_o * h_o - h_o**2,0.0))
+
+                # Segmento circular mojado en una tapa
+                A_one_head_wet = R_o**2 * theta- (R_o - h_o) * sqrt_term
+
+                # El tanque tiene dos tapas planas
+                A_heads_wet = 2.0 * A_one_head_wet
+
+                A_total = np.pi * self.d_o * self.L+ 2.0 * np.pi * R_o**2
+
+            elif self.head_type == "hemispherical":
+
+                # Las dos semiesferas juntas equivalen
+                # a una superficie esférica
+                A_heads_wet = 2.0 * np.pi * R_o * h_o
+
+                A_total = np.pi * self.d_o * self.L+ 4.0 * np.pi * R_o**2
+
+            else:
+
+                raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+            A_wet = A_lateral_wet + A_heads_wet
+            A_vapour = A_total - A_wet
+
+            Q_L = self.U_L* A_wet* (self.T_air - self.cryogen.T_sat)
+
+            Q_V = self.U_V* A_vapour* (self.T_air - self.data["Tv_avg"])
 
        # Store reconstructed heat ingresses in the tank object
         self.data['Q_L'] = np.array(Q_L)
@@ -687,9 +914,53 @@ class Tank:
         elif self.Geo_l == "spherical":
             return np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)
         
+        # Cambio (Fabián)
         elif self.Geo_l == "horizontal":
-            return self.d_o * self.L * np.acos((self.d_o/2 - self.z) / (self.d_o/2)) + np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)
 
+            # Radio exterior del tanque
+            R_o = self.d_o / 2
+
+            # Espesor radial de la pared
+            wall_thickness = (self.d_o - self.d_i) / 2
+
+            # Altura de la interfase medida desde
+            # el fondo de la geometría exterior
+            h_o = self.z + wall_thickness
+
+            # Protección frente a errores pequeños de redondeo
+            h_o = np.clip(h_o,0.0,2.0 * R_o)
+
+            # Medio ángulo asociado al arco mojado
+            theta = np.arccos(np.clip((R_o - h_o) / R_o,-1.0,1.0))
+
+            # Área mojada de la sección cilíndrica
+            A_lateral = self.d_o* self.L* theta
+
+            if self.head_type == "flat":
+
+                # Área del segmento circular mojado
+                # en una tapa plana
+                sqrt_term = np.sqrt(np.maximum(2 * R_o * h_o - h_o**2,0))
+
+                A_one_head = (R_o**2 * theta- (R_o - h_o) * sqrt_term)
+
+                # El tanque posee dos tapas planas
+                A_heads = 2.0 * A_one_head
+
+            elif self.head_type == "hemispherical":
+
+                # Las dos tapas semiesféricas juntas
+                # equivalen a la superficie de una esfera
+                # cortada a la altura h_o
+                A_heads = (2.0* np.pi* R_o* h_o)
+
+            else:
+
+                raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+            return A_lateral + A_heads
+        
+        # Fin del cambio 
     @property
     def A_V(self):
         """Tank wall area in contact with the vapour"""
@@ -699,10 +970,35 @@ class Tank:
         elif self.Geo_l == "spherical":
             return np.pi*self.d_o * (self.d_o-(self.z + (self.d_o - self.d_i)/2))
        
+        #Cambio (Fabián)
         elif self.Geo_l == "horizontal":
-            A_total = np.pi * self.d_o * self.L + 2 * np.pi * (self.d_o/2)**2
-            A_wet   = self.d_o * self.L * np.acos((self.d_o/2 - self.z) / (self.d_o/2)) + np.pi*self.d_o*(self.z + (self.d_o - self.d_i)/2)
-            return A_total - A_wet
+
+            # Radio exterior
+            R_o = self.d_o / 2.0
+
+            # Área lateral de la sección cilíndrica completa
+            A_cylinder_total = (np.pi* self.d_o* self.L)
+
+            if self.head_type == "flat":
+
+                # Dos tapas circulares planas
+                A_heads_total = (2.0* np.pi* R_o**2)
+
+            elif self.head_type == "hemispherical":
+
+                # Las dos semiesferas juntas forman
+                # la superficie de una esfera completa
+                A_heads_total = 4.0* np.pi* R_o**2
+
+            else:
+
+                raise ValueError("For a horizontal tank, head_type must be 'flat' or 'hemispherical'.")
+
+            A_total = A_cylinder_total+ A_heads_total
+
+            return A_total - self.A_L
+
+        #Fin del cambio
 
 
     @property
