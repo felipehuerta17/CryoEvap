@@ -1,30 +1,13 @@
-# Ensure that python finds the submodules
 import sys
-sys.path.append("..") # Adds higher directory to python modules path.
-
-# Scientific computing
+sys.path.append("..")
 import numpy as np
-
-#import optimization class
 from cryoevap.optimize import Opti_jax
-
-# Visualisation
 import matplotlib.pyplot as plt
-
-## Module imports
-# Import the storage tank Class
 from cryoevap.storage_tanks import Tank
-
-# Import Cryogen class
 from cryoevap.cryogens import Cryogen
-
-# Import JAX library
 import jax
 import jax.numpy as jnp
-
-# Import pandas for data handling
 import pandas as pd
-
 import itertools
 
 # Set JAX to use 64-bit precision
@@ -90,7 +73,6 @@ for r_U, LF in itertools.product(r_U_vals, LF_vals):
     col_name = f'tau_ru_{r_U:.2f}_LF_{LF:.2f}'
     results[col_name] = estimate_transient_period(a_vals, r_U, LF)
 
-# 4. Guardar en CSV
+# Save
 df = pd.DataFrame(results)
-df.to_csv('../Results/Data/transient_period.csv', index=False)
-print("CSV guardado exitosamente.")
+df.to_csv('../Results_new/Data/transient_period.csv', index=False)

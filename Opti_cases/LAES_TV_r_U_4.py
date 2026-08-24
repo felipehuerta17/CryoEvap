@@ -14,7 +14,7 @@ from cryoevap.cryogens import Cryogen
 jax.config.update("jax_enable_x64", True)
 
 # ---------------------------------------------------------
-# 1. TANK & CRYOGEN SETUP
+# TANK & CRYOGEN SETUP
 # ---------------------------------------------------------
 Q_roof = 0              # Roof heat ingress / W
 T_air  = 18.08 + 273.15 # Temperature of the environment / K
@@ -71,26 +71,26 @@ large_tank.time_interval = 1200
 evap_time = 3600 * 24 * 30  # 30 days simulation execution runtime
 
 # ---------------------------------------------------------
-# 2. DATA LOADING AND SIMULATION
+# DATA LOADING AND SIMULATION
 # ---------------------------------------------------------
-folder_data = "../Results/Data/"         
-folder_results = "../Results/Data/" 
+folder_data = "../Results_new/Data/"         
+folder_results = "../Results_new/Data/" 
 os.makedirs(folder_results, exist_ok=True)
 
-# 1. Read the CSV containing previously generated optimal configurations
+# Read the CSV containing previously generated optimal configurations
 df_opts = pd.read_csv(os.path.join(folder_data, 'LAES_opti_12h_LFs_ru_4_opts.csv'))
 
-# 2. Extract specific optimal aspect ratios using np.isclose to handle float precision safely
+# Extract specific optimal aspect ratios using np.isclose to handle float precision safely
 opt_ar_95 = df_opts.loc[np.isclose(df_opts['LF'], 0.95, atol=1e-3), 'Optimal_Geometric_AR'].values[0]
 opt_ar_05 = df_opts.loc[np.isclose(df_opts['LF'], 0.05, atol=1e-3), 'Optimal_Geometric_AR'].values[0]
 
 print(f"Loaded optimal configurations -> LF 0.95: AR={opt_ar_95:.4f} | LF 0.05: AR={opt_ar_05:.4f}")
 
-# 3. Initialize the JAX optimizer and simulation engine
+# Initialize the JAX optimizer and simulation engine
 coeffs = load_coolprop_coeffs('../cryoevap/cryogens/Coeffs/')
 opti = TankOptimizerJAX(large_tank)
 
-# 4. Iterate over both scenarios to simulate and export profiles
+# Iterate over both scenarios to simulate and export profiles
 scenarios = [(0.95, opt_ar_95), (0.05, opt_ar_05)]
 
 for lf_target, ar_target in scenarios:

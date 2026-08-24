@@ -54,11 +54,11 @@ axs[0].legend(prop={'size': fontsize_legend})
 axs[0].text(0.03, 0.97, 'a)', transform=axs[0].transAxes, fontsize=18, fontweight='bold', va='top')
 axs[0].set_ylim(0, 570)
 
-eq_03_05 = rf'$\tau \sim {coef03_05[0]:.2f}\,a^{{-1/3}}$'
-eq_07_05 = rf'$\tau \sim {coef07_05[0]:.2f}\,a^{{-1/3}}$'
+eq_03_05 = rf'$\tau = {coef03_05[0]:.2f}\,a^{{-1/3}} + {coef03_05[1]:.2f}$'
+eq_07_05 = rf'$\tau = {coef07_05[0]:.2f}\,a^{{-1/3}} + {coef07_05[1]:.2f}$'
 
-axs[0].text(0.74, 0.49, eq_03_05, transform=axs[0].transAxes, fontsize=14, color=paleta(1)) # Corrección de color y posición
-axs[0].text(0.73, 0.34, eq_07_05, transform=axs[0].transAxes, fontsize=14, color=paleta(2))
+axs[0].text(0.6, 0.53, eq_03_05, transform=axs[0].transAxes, fontsize=14, color=paleta(1)) # Corrección de color y posición
+axs[0].text(0.565, 0.34, eq_07_05, transform=axs[0].transAxes, fontsize=14, color=paleta(2))
 axs[0].text(0.1, 0.97, r"LF$_0 = 0.05$", transform=axs[0].transAxes, 
             fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 
@@ -74,11 +74,11 @@ axs[1].text(0.1, 0.97, r"LF$_0 = 0.95$", transform=axs[1].transAxes,
             fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 
 # Textos de ecuaciones con colores corregidos
-eq_03_95 = rf'$\tau \sim {coef03_95[0]:.2f}\,a^{{-1/3}}$'
-eq_07_95 = rf'$\tau \sim {coef07_95[0]:.2f}\,a^{{-1/3}}$'
+eq_03_95 = rf'$\tau = {coef03_95[0]:.2f}\,a^{{-1/3}} + {coef03_95[1]:.2f}$'
+eq_07_95 = rf'$\tau = {coef07_95[0]:.2f}\,a^{{-1/3}} + {coef07_95[1]:.2f}$'
 
-axs[1].text(0.74, 0.49, eq_03_95, transform=axs[1].transAxes, fontsize=14, color=paleta(1))
-axs[1].text(0.73, 0.34, eq_07_95, transform=axs[1].transAxes, fontsize=14, color=paleta(2))
+axs[1].text(0.635, 0.53, eq_03_95, transform=axs[1].transAxes, fontsize=14, color=paleta(1))
+axs[1].text(0.6, 0.34, eq_07_95, transform=axs[1].transAxes, fontsize=14, color=paleta(2))
 
 plt.tight_layout()
 plt.savefig("Figures/Fig_4.svg", bbox_inches='tight', dpi=300)

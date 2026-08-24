@@ -14,7 +14,7 @@ from cryoevap.cryogens import Cryogen
 jax.config.update("jax_enable_x64", True)
 
 # ---------------------------------------------------------
-# 1. TANK & CRYOGEN SETUP
+# TANK & CRYOGEN SETUP
 # ---------------------------------------------------------
 Q_roof = 0               # Roof heat ingress / W
 T_air  = 18.08 + 273.15  # Temperature of the environment / K
@@ -70,14 +70,14 @@ large_tank.time_interval = 1200
 large_tank.plot_interval = evap_time / 6
 
 # ---------------------------------------------------------
-# 2. OPTIMIZATION & DATA EXPORT
+# OPTIMIZATION & DATA EXPORT
 # ---------------------------------------------------------
 
 # Load coefficients once globally to optimize performance
 coeffs = load_coolprop_coeffs()
 opti   = TankOptimizerJAX(large_tank)
 
-folder = "../Results/Data/"
+folder = "../Results_new/Data/"
 os.makedirs(folder, exist_ok=True)
 
 # --- Task A: Generate and export Response Surface ---
@@ -96,7 +96,7 @@ filename_surface = os.path.join(folder, 'LAES_opti_12h_LFs_ru_4.csv')
 df_surface.to_csv(filename_surface, index=False)
 print(f"Response surface successfully saved to: {filename_surface}")
 
-# --- Task B: High-Resolution Optimization Sweep ---
+# High-Resolution Optimization Sweep ---
 print("Starting high-resolution optimization sweep...")
 LF_array_fine = jnp.linspace(0.05, 0.95, 100)
 results_opt = []

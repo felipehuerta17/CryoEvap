@@ -14,7 +14,7 @@ from cryoevap.cryogens import Cryogen
 jax.config.update("jax_enable_x64", True)
 
 # ---------------------------------------------------------
-# 1. TANK & CRYOGEN SETUP
+# TANK & CRYOGEN SETUP
 # ---------------------------------------------------------
 Q_roof = 0               # Roof heat ingress / W
 T_air  = 18.08 + 273.15  # Temperature of the environment / K
@@ -63,7 +63,7 @@ large_tank.time_interval = 1200.0
 
 # Define execution configurations for both r_U values
 r_U_scenarios = [4.0, 0.25]
-folder_data = "../Results/Data/"
+folder_data = "../Results_new/Data/"
 os.makedirs(folder_data, exist_ok=True)
 
 # Load polynomial thermophysical coefficients once globally
@@ -78,7 +78,7 @@ mixed_grad_fun = jax.jacfwd(grad_fun, argnums=1)
 params_to_analyze = ['U_L', 'U_V', 'U_b', 'eta_w']
 
 # ---------------------------------------------------------
-# 2. MULTI-SCENARIO EXECUTION LOOP
+# MULTI-SCENARIO EXECUTION LOOP
 # ---------------------------------------------------------
 for r_U in r_U_scenarios:
     # Resolve file name convention string based on numerical value
