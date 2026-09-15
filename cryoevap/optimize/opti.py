@@ -2,7 +2,7 @@ import numpy as np
 
 from ..storage_tanks.tank import Tank
 
-from scipy.optimize import Bounds, minimize
+from scipy.optimize import Bounds, minimize, minimize_scalar, dual_annealing
 
 # Visualisation
 import matplotlib.pyplot as plt
@@ -79,16 +79,7 @@ class Opti:
         for attr in required_attrs:
             if not hasattr(Tank_obj, attr):
                 raise AttributeError(f"Tank object missing required attribute '{attr}'. Please ensure all necessary heat transfer properties are defined.")
-
-    def __grid(self):
-        """ Update the z_grid in the class tank """
-        # Calculate number of nodes
-        n_z = 1 + int(np.round(self.tank.l_V[0]/self.dz, 0))
-
-        # Define dimensionless computational grid
-        self.tank.z_grid = np.linspace(0, 1, n_z)
-        return
-        
+       
     def __ofunction_BOR(self, a):
         """ Objective function to minimize the Boil-off rate value
             with respect of the aspect ratio """
@@ -102,10 +93,7 @@ class Opti:
         
         # External diameter of the tank defined as a porcentage of the internal diameter
         self.tank.d_o = self.tank.d_i * (1 + self.thick)
-        
-        # Update the zgrid
-        self.__grid()
-        
+              
         # Reinitialize cryogen
         self.tank.cryogen.set_coolprops(self.tank.cryogen.P)
         
@@ -115,25 +103,32 @@ class Opti:
         # return the BOR value
         return self.tank.BOR()
     
-    def aspect(self, verbose = 1, tol = 1e-8):
+    def aspect(self, verbose=1, tol=1e-9):
         """
-        Optimize the aspect ratio of the tank by minimizing the boil-off rate (BOR).
-        
-        Inputs
-        ----------
-        verbose : int, optional. Controls the verbosity of the optimization output.
-            - 1: No output (default)
-            - 2: Display optimization process information
-        tol : float, optional. Tolerance for the optimization process, default is 1e-8
-        
-        Return
-        -------
-        The optimal aspect ratio found (a_opt), float.
+        Optimize the aspect ratio using Dual Annealing.
+        Excellent for avoiding premature convergence in flat, noisy response surfaces.
         """
+        # FIX: Extract the scalar values from the Bounds object using .lb and .ub
+        bounds = [(self.bounds.lb[0], self.bounds.ub[0])]
         
-        self.res     = minimize(self.__ofunction_BOR, self.a_opt, method='trust-constr',tol = tol , options={'verbose': verbose}, bounds=self.bounds)
-        self.BOR_opt = self.tank.BOR()
-        self.a_opt   = self.res.x[0]
+        func_wrapper = lambda x: self.__ofunction_BOR(x[0])
+        
+        if verbose > 0:
+            print("Iniciando Dual Annealing...")
+            
+        self.res = dual_annealing(
+            func_wrapper,
+            bounds=bounds,
+            maxiter=1000,           # Iteraciones máximas
+            no_local_search=False,  # Permite que un optimizador local afine el resultado al final
+        )
+        
+        self.a_opt = self.res.x[0]
+        self.BOR_opt = self.res.fun
+        
+        if verbose > 0:
+            print(f"Óptimo encontrado: a = {self.a_opt:.6f}")
+            
         return self.a_opt
     
     def BOR_array(self, a_array):
