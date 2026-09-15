@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController, DirectAdjoint
+from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController, DirectAdjoint, Kvaerno5
 import pandas as pd
 import os
 import functools
@@ -106,6 +106,7 @@ class TankOptimizerJAX:
             "V":      jnp.array(tank.V, dtype=jnp.float64),
             "d_i":    jnp.array(tank.d_i, dtype=jnp.float64),
             "d_o":    jnp.array(tank.d_o, dtype=jnp.float64),
+            "xi":     jnp.array(tank.d_o / tank.d_i, dtype=jnp.float64), # <-- NUEVO
             "LF":     jnp.array(tank.LF, dtype=jnp.float64),
             "eta_w":  jnp.array(tank.eta_w, dtype=jnp.float64),
             "T_air":  jnp.array(tank.T_air, dtype=jnp.float64),
@@ -171,8 +172,8 @@ class TankOptimizerJAX:
         """
         aspect_ratio, p = args
         d_i = ((4 * p["V"]) / (jnp.pi * aspect_ratio)) ** (1/3)
-        d_o = d_i + 0.02 
-
+        # d_o = d_i + 0.02 
+        d_o = d_i * p["xi"] 
         V_L = y[0]
         T_V = y[1:]
 
@@ -254,8 +255,8 @@ class TankOptimizerJAX:
             The calculated thermal aspect ratio.
         """
         d_i = ((4 * p["V"]) / (jnp.pi * aspect_ratio)) ** (1/3)
-        d_o = d_i + 0.02 
-
+        # d_o = d_i + 0.02 
+        d_o = d_i * p["xi"] 
         A_T   = jnp.pi * d_i**2 / 4
         l     = p["V"] / A_T
 
@@ -296,14 +297,14 @@ class TankOptimizerJAX:
 
         sol = diffeqsolve(
             term,
-            solver=Tsit5(),
+            solver=Kvaerno5(),
             t0=0,
             t1=t_final,
             dt0=0.01,
             y0=IC,
             args=(aspect_ratio, params),
             saveat=SaveAt(ts=jnp.arange(0, t_final + 1, self.tank.time_interval)),
-            max_steps=1000000,
+            max_steps=10000000,
             stepsize_controller=PIDController(rtol=1e-8, atol=1e-8),
             adjoint=DirectAdjoint()
         )
