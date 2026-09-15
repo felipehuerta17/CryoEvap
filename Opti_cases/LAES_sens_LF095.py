@@ -62,7 +62,7 @@ evap_time = 3600 * 12
 large_tank.time_interval = 1200.0
 
 # Define execution configurations for both r_U values
-r_U_scenarios = [4.0, 0.25]
+r_U_scenarios = [4.0, 1.0, 0.25]
 folder_data = "../Results_new/Data/"
 os.makedirs(folder_data, exist_ok=True)
 
@@ -82,7 +82,12 @@ params_to_analyze = ['U_L', 'U_V', 'U_b', 'eta_w']
 # ---------------------------------------------------------
 for r_U in r_U_scenarios:
     # Resolve file name convention string based on numerical value
-    ru_str = "4" if r_U == 4.0 else "025"
+    if r_U == 1.0:
+        ru_str = "1"
+    elif r_U == 4.0:
+        ru_str = "4"
+    else:
+        ru_str = "025"  
     print(f"\n=========================================================")
     print(f"RUNNING ANALYSIS FOR: r_U = {r_U} (Output suffix: ru_{ru_str})")
     print(f"=========================================================")

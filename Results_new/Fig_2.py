@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
+
 # ---------------------------------------------------------
 # 1. CARGA DE DATOS
 # ---------------------------------------------------------
@@ -16,6 +17,11 @@ data_files = {
 optimos_files = {
     'ru_025': pd.read_csv(folder + 'LAES_opti_12h_LFs_ru_025_opts.csv'),
     'ru_4': pd.read_csv(folder + 'LAES_opti_12h_LFs_ru_4_opts.csv')
+}
+
+analytical_files = {
+    'ru_025': pd.read_csv(folder + 'analytical_optimal_r_U_0.25.csv'),
+    'ru_4': pd.read_csv(folder + 'analytical_optimal_r_U_4.0.csv')
 }
 
 # ---------------------------------------------------------
@@ -42,35 +48,48 @@ fig, axes = plt.subplots(2, 2, figsize=(14, 6), dpi=300,
 subplot_configs = [
     {
         'key': 'ru_025', 'xlim': [0.01, 0.5], 'letter': 'a)', "text": r"$r_U = 0.25$",
-        'ylim_bottom': [0.00, 0.008], 'yticks_bottom': [0.00, 0.005],
-        'ylim_top': [0.025, 0.08],     'yticks_top': [0.03, 0.05, 0.07]
+        'ylim_bottom': [0.00, 0.8], 'yticks_bottom': [0.00, 0.5],
+        'ylim_top': [2.5, 8.0],     'yticks_top': [2.5, 5.0, 7.5]
     },
     {
         'key': 'ru_4', 'xlim': [0.25, 3.0], 'letter': 'b)', "text": r"$r_U = 4.00$",
-        'ylim_bottom': [0.00, 0.015], 'yticks_bottom': [0.000, 0.005, 0.010, 0.015],
-        'ylim_top': [0.06, 0.15],     'yticks_top': [0.08, 0.10, 0.12, 0.14]
+        'ylim_bottom': [0.00, 1.5], 'yticks_bottom': [0.000, 0.5, 1.0, 1.5],
+        'ylim_top': [6.0, 15.0],     'yticks_top': [8, 10, 12, 14]
     }
 ]
 
-def plot_curves(ax, df_data, df_opts):
+def plot_curves(ax, df_data, df_opts, df_analytical, subplot_idx):
     for i, lf in enumerate(target_lfs):
-        subset = df_data[np.isclose(df_data['Liquid_Filling'], lf, atol=1e-3)]
-        ax.plot(subset['Geometric_AR'], subset['BOR'], 
+        subset = df_data[np.isclose(df_data['LF'], lf, atol=1e-3)]
+        ax.plot(subset['Geometric_AR'], subset['BOR']*100, 
                 label=rf"LF$_0$ = {lf:.2f}", linewidth=linewidth_curve, color=colors[i])
         
-    ax.plot(df_opts['Optimal_Geometric_AR'], df_opts['Min_BOR'], 
+    ax.plot(df_opts['Optimal_Geometric_AR'], df_opts['Min_BOR']*100, 
             label='Optimal Values', linewidth=linewidth_opt, color='black')
-
+    
+    # Muestreo geométrico: pocos puntos al inicio y más densos al final.
+    n_points = 14
+    sample_idx = np.unique(np.geomspace(1, len(df_analytical) - 1, n_points).astype(int))
+    sample_idx = np.insert(sample_idx, 0, 0)
+    
+    if subplot_idx == 0:
+        sample_idx = np.delete(sample_idx, 2)
+    ax.plot(df_analytical['Optimal_AR'].iloc[sample_idx],
+        df_analytical['BOR'].iloc[sample_idx] * 100, "x", markersize=10,
+        markeredgewidth=2, label='Analytical Optimal Values', color="red")
+            
+    
 for col_idx, config in enumerate(subplot_configs):
     ax_top = axes[0, col_idx]
     ax_bottom = axes[1, col_idx]
     
     df_data = data_files[config['key']]
     df_opts = optimos_files[config['key']]
-    
+    df_analytical = analytical_files[config['key']]
+
     # 1. Graficar datos
-    plot_curves(ax_top, df_data, df_opts)
-    plot_curves(ax_bottom, df_data, df_opts)
+    plot_curves(ax_top, df_data, df_opts, df_analytical, 0)
+    plot_curves(ax_bottom, df_data, df_opts, df_analytical, 1)
 
     # 2. Aplicar límites exactos
     ax_top.set_xlim(config['xlim'])
@@ -84,11 +103,11 @@ for col_idx, config in enumerate(subplot_configs):
     
     # Formateo nativo de decimales (Reemplaza el antiguo set_yticklabels)
     if col_idx == 0:
-        ax_top.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        ax_bottom.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+        ax_top.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        ax_bottom.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     else:
-        ax_top.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        ax_bottom.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+        ax_top.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        ax_bottom.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 
     # 4. Magia del eje quebrado (Ocultar líneas centrales)
     ax_top.spines['bottom'].set_visible(False)
@@ -110,7 +129,7 @@ for col_idx, config in enumerate(subplot_configs):
     ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # Abajo-Der
 
     # 6. Textos
-    ax_bottom.set_xlabel('Geometrical Aspect Ratio', fontsize=fontsize_label)
+    ax_bottom.set_xlabel(r'Geometrical Aspect Ratio ($a$)', fontsize=fontsize_label)
     ax_top.text(0.04, 0.92, config['letter'], transform=ax_top.transAxes, 
                 fontsize=16, fontweight='bold', va='top', fontname='Arial')
 
@@ -123,7 +142,7 @@ fig.supylabel('Boil-Off Rate (BOR) / %/day', fontsize=fontsize_label, x=0.05, fo
 handles, labels = axes[1, 1].get_legend_handles_labels()
 by_label = dict(zip(labels, handles))
 fig.legend(by_label.values(), by_label.keys(), loc='lower center', 
-           bbox_to_anchor=(0.5, -0.08), ncol=4, fontsize=fontsize_legend, frameon=True)
+           bbox_to_anchor=(0.5, -0.08), ncol=5, fontsize=fontsize_legend, frameon=True)
 
-plt.savefig("Figures/Fig_2_V2.svg", bbox_inches='tight', dpi=300)
+plt.savefig("Figures/Fig_2.svg", bbox_inches='tight', dpi=300)
 plt.close()

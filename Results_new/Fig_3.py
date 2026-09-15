@@ -74,7 +74,7 @@ for config in configs:
                     color=paleta(file_info['color_idx']), linewidth=2)
 
     # Formato de cada subplot
-    ax.set_xlabel(r'Dimensionless height / $\xi$', fontsize=fontsize_label)
+    ax.set_xlabel(r'Dimensionless height / $\zeta$', fontsize=fontsize_label)
     ax.tick_params(axis='both', labelsize=fontsize_ticks)
     ax.legend(fontsize=fontsize_legend)
     ax.text(0.03, 0.97, config['title_letter'], transform=ax.transAxes, 

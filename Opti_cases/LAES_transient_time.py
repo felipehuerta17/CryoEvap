@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from cryoevap.optimize import Opti_jax
+from cryoevap.optimize import TankOptimizerJAX, load_coolprop_coeffs
 import matplotlib.pyplot as plt
 from cryoevap.storage_tanks import Tank
 from cryoevap.cryogens import Cryogen
