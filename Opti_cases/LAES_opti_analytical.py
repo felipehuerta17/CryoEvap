@@ -170,7 +170,7 @@ def analytical_fixed_point(opti_params, r_U, evap_time, a_guess=1.0, tol=1e-8, m
     return float(a_current), float(bor_exact)
 
 LF_array_fine = jnp.linspace(0.05, 0.95, 100)
-for r_U in [0.25, 4]:
+for r_U in [0.25, 1.0, 4.0]:
     results_opt = []
 
     for lf_eval in LF_array_fine:

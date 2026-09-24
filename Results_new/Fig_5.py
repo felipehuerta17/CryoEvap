@@ -6,7 +6,7 @@ import os
 # ---------------------------------------------------------
 # 1. PARAMETERS & CONFIGURATION
 # ---------------------------------------------------------
-params = [r'$U_L$', r'$U_V$', r'$U_b$', r'$\eta_w$'] # Includes all parameters
+params = [r'$U_L$', r'$U_V$', r'$U_b$', r'$\eta_w$', r'$\xi$'] # Includes all parameters
 x      = np.arange(len(params))
 width  = 0.35
 
@@ -91,7 +91,7 @@ ax2.axhline(0, color='black', linewidth=0.8)
 # 4. EXPORT FIGURE
 # ---------------------------------------------------------
 plt.tight_layout()
-plt.savefig("Figures/Fig_5.svg", bbox_inches='tight', dpi=300)
+plt.savefig("Figures/Fig_5_V2.svg", bbox_inches='tight', dpi=300)
 plt.close()
 
 # Print values for reporting

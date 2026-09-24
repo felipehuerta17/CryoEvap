@@ -75,7 +75,7 @@ grad_fun = jax.grad(opti._objective_bor, argnums=0, allow_int=True)
 hess_fun = jax.jacfwd(grad_fun, argnums=0)
 mixed_grad_fun = jax.jacfwd(grad_fun, argnums=1) 
 
-params_to_analyze = ['U_L', 'U_V', 'U_b', 'eta_w']
+params_to_analyze = ['U_L', 'U_V', 'U_b', 'eta_w', 'xi']
 
 # ---------------------------------------------------------
 # MULTI-SCENARIO EXECUTION LOOP

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-
+plt.rcParams['mathtext.fontset'] = 'cm'
 
 # ---------------------------------------------------------
 # 1. CARGA DE DATOS
@@ -42,7 +42,7 @@ colors = ['#4A1259', '#C54358', '#F99E1C']
 # ---------------------------------------------------------
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 6), dpi=300, 
-                         gridspec_kw={'height_ratios': [1.2, 1], 'hspace': 0.08, 'wspace': 0.25})
+                         gridspec_kw={'height_ratios': [1.2, 1], 'hspace': 0.08, 'wspace': 0.2})
 
 # Ajuste de rangos: Nota cómo los yticks ahora están ESTRICTAMENTE dentro de los ylim
 subplot_configs = [
@@ -129,14 +129,20 @@ for col_idx, config in enumerate(subplot_configs):
     ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # Abajo-Der
 
     # 6. Textos
-    ax_bottom.set_xlabel(r'Geometrical Aspect Ratio ($a$)', fontsize=fontsize_label)
+    ax_bottom.set_xlabel(r"Geometrical Aspect Ratio (   )", fontsize=fontsize_label)
+    ax_bottom.xaxis.label.set_position([0.5, -0.12]) 
+
+    ax_bottom.text(0.7558, -0.155, r"$a$", transform=ax_bottom.transAxes,
+                fontsize=fontsize_label + 3,  
+                ha='center', va='top')
+
     ax_top.text(0.04, 0.92, config['letter'], transform=ax_top.transAxes, 
                 fontsize=16, fontweight='bold', va='top', fontname='Arial')
 
     ax_top.text(0.75, 0.92, config['text'], transform=ax_top.transAxes, 
             fontsize=16, fontweight='bold', va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 # Etiqueta global del eje Y compartida
-fig.supylabel('Boil-Off Rate (BOR) / %/day', fontsize=fontsize_label, x=0.05, fontweight='medium')
+fig.supylabel('Boil-Off Rate (BOR) / %/day', fontsize=fontsize_label, x=0.065, fontweight='medium')
 
 # 7. Leyenda unificada al fondo
 handles, labels = axes[1, 1].get_legend_handles_labels()
