@@ -5,20 +5,29 @@ import pandas as pd
 import os
 import functools
 
-def load_coolprop_coeffs(folder='../cryoevap/cryogens/Coeffs/'):
+def load_coolprop_coeffs(folder=None):
     """
     Loads CoolProp polynomial coefficients for density, heat capacity, and thermal conductivity.
     
     Parameters
     ----------
-    folder : str
-        The path to the folder containing the CSV coefficient files.
+    folder : str, optional
+        The path to the folder containing the CSV coefficient files. If None or not found,
+        it automatically resolves the 'Coeffs' folder within the package.
         
     Returns
     -------
     dict
         A dictionary containing the DataFrames with the polynomial coefficients.
     """
+    if folder is None or not os.path.exists(folder):
+        pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        default_folder = os.path.join(pkg_dir, 'cryogens', 'Coeffs')
+        if os.path.exists(default_folder):
+            folder = default_folder
+        elif folder is None:
+            folder = '../cryoevap/cryogens/Coeffs/'
+
     cp_V_df  = pd.read_csv(os.path.join(folder, 'coeffs_cpV.csv'))
     k_V_df   = pd.read_csv(os.path.join(folder, 'coeffs_kV.csv'))
     rho_V_df = pd.read_csv(os.path.join(folder, 'coeffs_rhoV.csv'))
