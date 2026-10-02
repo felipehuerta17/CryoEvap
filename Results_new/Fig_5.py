@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 # ---------------------------------------------------------
-# 1. PARAMETERS & CONFIGURATION
+# Parameters and configuration
 # ---------------------------------------------------------
 params = [r'$U_L$', r'$U_V$', r'$U_b$', r'$\eta_w$', r'$\xi$'] # Includes all parameters
 x      = np.arange(len(params))
@@ -17,7 +17,7 @@ fontsize_legend = 14
 linewidth       = 2.5
 
 # ---------------------------------------------------------
-# 2. DATA IMPORT & AVERAGING
+# Data import and averaging
 # ---------------------------------------------------------
 folder = "Data/"
 
@@ -52,7 +52,7 @@ bor_std_05 = LF05_std['Local_sensitivity'].to_numpy()
 des_std_05 = LF05_std['Design_elasticity'].to_numpy()
 
 # ---------------------------------------------------------
-# 3. PLOTTING
+# Plotting
 # ---------------------------------------------------------
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), dpi=300)
 
@@ -88,7 +88,7 @@ ax2.axhline(0, color='black', linewidth=0.8)
 # ax2.set_ylim(-1.2, 0.0)
 
 # ---------------------------------------------------------
-# 4. EXPORT FIGURE
+# Export figure
 # ---------------------------------------------------------
 plt.tight_layout()
 plt.savefig("Figures/Fig_5_V2.svg", bbox_inches='tight', dpi=300)

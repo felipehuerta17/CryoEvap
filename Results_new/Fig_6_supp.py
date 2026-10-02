@@ -17,7 +17,7 @@ for lf in LF:
     ratio = cte*(lf*4*a**(1/3) + a**(-2/3))
     plt.plot(a, ratio, label=fr'LF$_0$={lf:.2f}')
 
-# Update xlabel and ylabel with fontsize 12
+# Optimal values
 ratios_opti = cte*(LF*4*opti_a**(1/3) + opti_a**(-2/3))
 plt.plot(opti_a, ratios_opti, 'o--', markersize=8, label=fr'Optimal $a$')
 plt.xlabel("Geometrical Aspect Ratio", fontsize=12)

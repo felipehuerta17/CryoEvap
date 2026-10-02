@@ -21,13 +21,13 @@ tau_rq_07_LF95 = data['tau_ru_4.00_LF_0.95'] / 3600
 tau_rq_03_LF05 = data['tau_ru_0.25_LF_0.05'] / 3600
 tau_rq_07_LF05 = data['tau_ru_4.00_LF_0.05'] / 3600
 
-# 1. Ajuste lineal (Regresión)
+# Linear fits
 coef03_95 = np.polyfit(a_relation, tau_rq_03_LF95, 1)
 coef07_95 = np.polyfit(a_relation, tau_rq_07_LF95, 1)
 coef03_05 = np.polyfit(a_relation, tau_rq_03_LF05, 1)
 coef07_05 = np.polyfit(a_relation, tau_rq_07_LF05, 1)
 
-# 2. Evaluación de las curvas ajustadas
+# Evaluate fitted curves
 fit_03_95 = np.polyval(coef03_95, a_relation)
 fit_07_95 = np.polyval(coef07_95, a_relation)
 fit_03_05 = np.polyval(coef03_05, a_relation)
@@ -63,7 +63,7 @@ axs[0].set_ylim(0, 570)
 eq_03_05 = rf'$\tau = {coef03_05[0]:.2f}\,a^{{-1/3}} + {coef03_05[1]:.2f}$'
 eq_07_05 = rf'$\tau = {coef07_05[0]:.2f}\,a^{{-1/3}} + {coef07_05[1]:.2f}$'
 
-axs[0].text(0.6, 0.53, eq_03_05, transform=axs[0].transAxes, fontsize=16, color=paleta(1)) # Corrección de color y posición
+axs[0].text(0.6, 0.53, eq_03_05, transform=axs[0].transAxes, fontsize=16, color=paleta(1))
 axs[0].text(0.565, 0.34, eq_07_05, transform=axs[0].transAxes, fontsize=16, color=paleta(2))
 axs[0].text(0.1, 0.97, r"LF$_0$ = 0.05", transform=axs[0].transAxes, 
             fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
@@ -87,7 +87,7 @@ axs[1].set_ylim(0, 28)
 axs[1].text(0.1, 0.97, r"LF$_0$ = 0.95", transform=axs[1].transAxes, 
             fontsize=16, va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
 
-# Textos de ecuaciones con colores corregidos
+# Equation annotations
 eq_03_95 = rf'$\tau = {coef03_95[0]:.2f}\,a^{{-1/3}} + {coef03_95[1]:.2f}$'
 eq_07_95 = rf'$\tau = {coef07_95[0]:.2f}\,a^{{-1/3}} + {coef07_95[1]:.2f}$'
 

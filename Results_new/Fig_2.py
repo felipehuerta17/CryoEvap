@@ -5,7 +5,7 @@ from matplotlib.ticker import FormatStrFormatter
 plt.rcParams['mathtext.fontset'] = 'cm'
 
 # ---------------------------------------------------------
-# 1. CARGA DE DATOS
+# Data loading
 # ---------------------------------------------------------
 folder = "Data/"
 
@@ -25,7 +25,7 @@ analytical_files = {
 }
 
 # ---------------------------------------------------------
-# 2. CONFIGURACIÓN VISUAL
+# Visual configuration
 # ---------------------------------------------------------
 target_lfs = [0.05, 0.50, 0.95]
 
@@ -38,13 +38,13 @@ linewidth_opt   = 3.5
 colors = ['#4A1259', '#C54358', '#F99E1C'] 
 
 # ---------------------------------------------------------
-# 3. CREACIÓN DE FIGURA Y EJES QUEBRADOS
+# Figure and broken axes setup
 # ---------------------------------------------------------
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 6), dpi=300, 
                          gridspec_kw={'height_ratios': [1.2, 1], 'hspace': 0.08, 'wspace': 0.2})
 
-# Ajuste de rangos: Nota cómo los yticks ahora están ESTRICTAMENTE dentro de los ylim
+# Subplot configurations
 subplot_configs = [
     {
         'key': 'ru_025', 'xlim': [0.01, 0.5], 'letter': 'a)', "text": r"$r_U = 0.25$",
@@ -67,7 +67,7 @@ def plot_curves(ax, df_data, df_opts, df_analytical, subplot_idx):
     ax.plot(df_opts['Optimal_Geometric_AR'], df_opts['Min_BOR']*100, 
             label='Optimal Values', linewidth=linewidth_opt, color='black')
     
-    # Muestreo geométrico: pocos puntos al inicio y más densos al final.
+    # Geometric sampling
     n_points = 14
     sample_idx = np.unique(np.geomspace(1, len(df_analytical) - 1, n_points).astype(int))
     sample_idx = np.insert(sample_idx, 0, 0)
@@ -87,21 +87,21 @@ for col_idx, config in enumerate(subplot_configs):
     df_opts = optimos_files[config['key']]
     df_analytical = analytical_files[config['key']]
 
-    # 1. Graficar datos
+    # Plot curves
     plot_curves(ax_top, df_data, df_opts, df_analytical, 0)
     plot_curves(ax_bottom, df_data, df_opts, df_analytical, 1)
 
-    # 2. Aplicar límites exactos
+    # Axis limits
     ax_top.set_xlim(config['xlim'])
     ax_bottom.set_xlim(config['xlim'])
     ax_top.set_ylim(config['ylim_top'])
     ax_bottom.set_ylim(config['ylim_bottom'])
 
-    # 3. Aplicar Ticks explícitos
+    # Axis ticks
     ax_top.set_yticks(config['yticks_top'])
     ax_bottom.set_yticks(config['yticks_bottom'])
     
-    # Formateo nativo de decimales (Reemplaza el antiguo set_yticklabels)
+    # Tick formatting
     if col_idx == 0:
         ax_top.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         ax_bottom.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
@@ -109,26 +109,26 @@ for col_idx, config in enumerate(subplot_configs):
         ax_top.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         ax_bottom.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 
-    # 4. Magia del eje quebrado (Ocultar líneas centrales)
+    # Broken axis styling
     ax_top.spines['bottom'].set_visible(False)
     ax_bottom.spines['top'].set_visible(False)
     
-    # Quitar los ticks del eje X en el gráfico superior
+    # Remove x-axis ticks on top subplot
     ax_top.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
     ax_bottom.tick_params(axis='x', which='both', bottom=True, top=False, labelsize=fontsize_ticks)
     ax_top.tick_params(axis='y', labelsize=fontsize_ticks)
     ax_bottom.tick_params(axis='y', labelsize=fontsize_ticks)
 
-    # 5. Dibujar las líneas diagonales de corte (//)
-    d = .015  # Inclinación/Largo de las marcas
+    # Diagonal cut marks
+    d = .015  # Marker size
     kwargs = dict(transform=ax_top.transAxes, color='black', clip_on=False, linewidth=1.5)
-    ax_top.plot((-d, +d), (-d, +d), **kwargs)        # Arriba-Izq
-    ax_top.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # Arriba-Der
+    ax_top.plot((-d, +d), (-d, +d), **kwargs)        # Top-left
+    ax_top.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # Top-right
     kwargs.update(transform=ax_bottom.transAxes)  
-    ax_bottom.plot((-d, +d), (1 - d, 1 + d), **kwargs)        # Abajo-Izq
-    ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # Abajo-Der
+    ax_bottom.plot((-d, +d), (1 - d, 1 + d), **kwargs)        # Bottom-left
+    ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # Bottom-right
 
-    # 6. Textos
+    # Labels and annotations
     ax_bottom.set_xlabel(r"Geometrical Aspect Ratio (   )", fontsize=fontsize_label)
     ax_bottom.xaxis.label.set_position([0.5, -0.12]) 
 
@@ -141,10 +141,10 @@ for col_idx, config in enumerate(subplot_configs):
 
     ax_top.text(0.75, 0.92, config['text'], transform=ax_top.transAxes, 
             fontsize=16, fontweight='bold', va='top', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'),)
-# Etiqueta global del eje Y compartida
+# Shared y-axis label
 fig.supylabel('Boil-Off Rate (BOR) / %/day', fontsize=fontsize_label, x=0.065, fontweight='medium')
 
-# 7. Leyenda unificada al fondo
+# Legend
 handles, labels = axes[1, 1].get_legend_handles_labels()
 by_label = dict(zip(labels, handles))
 fig.legend(by_label.values(), by_label.keys(), loc='lower center', 
